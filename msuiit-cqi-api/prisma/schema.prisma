@@ -1,0 +1,338 @@
+// MSU-IIT CQI data model.
+// See ../../docs/schema.md for the full design rationale and ER diagram.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Catalog (institution-wide, program-independent)
+// ---------------------------------------------------------------------------
+
+model Program {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  curriculumCourses CurriculumCourse[]
+  plos              Plo[]
+  cohorts           Cohort[]
+  students          Student[]
+  userRoles         UserProgramRole[]
+
+  @@map("programs")
+}
+
+model Course {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  title       String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  curriculumCourses CurriculumCourse[]
+  clos              Clo[]
+  courseOfferings   CourseOffering[]
+
+  @@map("courses")
+}
+
+enum MappingLevelCode {
+  I
+  P
+  D
+}
+
+model MappingLevel {
+  code   MappingLevelCode @id
+  label  String
+  weight Int
+
+  cloPloMappings CloPloMapping[]
+
+  @@map("mapping_levels")
+}
+
+enum Semester {
+  FIRST
+  SECOND
+  SUMMER
+
+  @@map("semester")
+}
+
+model AcademicTerm {
+  id              String   @id @default(uuid())
+  schoolYearStart Int      @map("school_year_start")
+  schoolYearEnd   Int      @map("school_year_end")
+  semester        Semester
+  label           String
+
+  courseOfferings CourseOffering[]
+
+  @@unique([schoolYearStart, schoolYearEnd, semester])
+  @@map("academic_terms")
+}
+
+// ---------------------------------------------------------------------------
+// Program structure
+// ---------------------------------------------------------------------------
+
+model CurriculumCourse {
+  id            String  @id @default(uuid())
+  programId     String  @map("program_id")
+  courseId      String  @map("course_id")
+  electiveGroup String? @map("elective_group")
+  yearLevel     Int?    @map("year_level")
+  term          String?
+  displayOrder  Int     @default(0) @map("display_order")
+  isActive      Boolean @default(true) @map("is_active")
+
+  program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+  course  Course  @relation(fields: [courseId], references: [id], onDelete: Restrict)
+
+  @@unique([programId, courseId])
+  @@map("curriculum_courses")
+}
+
+model Plo {
+  id           String @id @default(uuid())
+  programId    String @map("program_id")
+  code         String
+  description  String
+  displayOrder Int    @default(0) @map("display_order")
+
+  program               Program                @relation(fields: [programId], references: [id], onDelete: Cascade)
+  performanceIndicators PerformanceIndicator[]
+  cloMappings           CloPloMapping[]
+
+  @@unique([programId, code])
+  @@map("plos")
+}
+
+model PerformanceIndicator {
+  id           String @id @default(uuid())
+  ploId        String @map("plo_id")
+  code         String
+  description  String
+  displayOrder Int    @default(0) @map("display_order")
+
+  plo         Plo             @relation(fields: [ploId], references: [id], onDelete: Cascade)
+  cloMappings CloPloMapping[]
+  evaluations PiEvaluation[]
+
+  @@unique([ploId, code])
+  @@map("performance_indicators")
+}
+
+model Clo {
+  id           String @id @default(uuid())
+  courseId     String @map("course_id")
+  code         String
+  description  String
+  displayOrder Int    @default(0) @map("display_order")
+
+  course      Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  ploMappings CloPloMapping[]
+  attainments CloAttainment[]
+
+  @@unique([courseId, code])
+  @@map("clos")
+}
+
+// The CLO->PLO mapping level (I/P/D) is the primary fact — every course's
+// CLOs are mapped straight to all applicable PLOs (see the workbook's
+// `Mapping` sheet, which has no PI column at all). `piId` is an optional
+// refinement: once a program elaborates a PLO into specific Performance
+// Indicators (as the `PLO Attainment Evaluation` sheet does, so far only for
+// PLO1 in the source workbook), the same CLO/PLO pairing can additionally be
+// tagged with which PI it evidences and how it's assessed. Making PI
+// mandatory here would make it impossible to import/record a CLO->PLO
+// mapping before every PI has been written up.
+model CloPloMapping {
+  id               String           @id @default(uuid())
+  cloId            String           @map("clo_id")
+  ploId            String           @map("plo_id")
+  levelCode        MappingLevelCode @map("level_code")
+  piId             String?          @map("pi_id")
+  assessmentMethod String?          @map("assessment_method")
+
+  clo   Clo                   @relation(fields: [cloId], references: [id], onDelete: Cascade)
+  plo   Plo                   @relation(fields: [ploId], references: [id], onDelete: Cascade)
+  pi    PerformanceIndicator? @relation(fields: [piId], references: [id], onDelete: SetNull)
+  level MappingLevel          @relation(fields: [levelCode], references: [code])
+
+  @@unique([cloId, ploId])
+  @@map("clo_plo_mappings")
+}
+
+// ---------------------------------------------------------------------------
+// People and enrollment
+// ---------------------------------------------------------------------------
+
+model Cohort {
+  id          String  @id @default(uuid())
+  programId   String  @map("program_id")
+  code        String
+  startYear   Int     @map("start_year")
+  endYear     Int     @map("end_year")
+  description String?
+
+  program     Program        @relation(fields: [programId], references: [id], onDelete: Cascade)
+  students    Student[]
+  evaluations PiEvaluation[]
+
+  @@unique([programId, code])
+  @@map("cohorts")
+}
+
+enum StudentStatus {
+  ACTIVE
+  GRADUATED
+  WITHDRAWN
+
+  @@map("student_status")
+}
+
+model Student {
+  id            String        @id @default(uuid())
+  studentNumber String        @unique @map("student_number")
+  firstName     String        @map("first_name")
+  lastName      String        @map("last_name")
+  programId     String        @map("program_id")
+  cohortId      String        @map("cohort_id")
+  status        StudentStatus @default(ACTIVE)
+
+  program     Program      @relation(fields: [programId], references: [id], onDelete: Restrict)
+  cohort      Cohort       @relation(fields: [cohortId], references: [id], onDelete: Restrict)
+  enrollments Enrollment[]
+
+  @@map("students")
+}
+
+model CourseOffering {
+  id             String  @id @default(uuid())
+  courseId       String  @map("course_id")
+  academicTermId String  @map("academic_term_id")
+  section        String?
+  instructorName String? @map("instructor_name")
+
+  course       Course       @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  academicTerm AcademicTerm @relation(fields: [academicTermId], references: [id], onDelete: Restrict)
+  enrollments  Enrollment[]
+
+  @@unique([courseId, academicTermId, section])
+  @@map("course_offerings")
+}
+
+model Enrollment {
+  id               String @id @default(uuid())
+  studentId        String @map("student_id")
+  courseOfferingId String @map("course_offering_id")
+
+  student        Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseOffering CourseOffering  @relation(fields: [courseOfferingId], references: [id], onDelete: Cascade)
+  cloAttainments CloAttainment[]
+
+  @@unique([studentId, courseOfferingId])
+  @@map("enrollments")
+}
+
+// ---------------------------------------------------------------------------
+// Facts
+// ---------------------------------------------------------------------------
+
+model CloAttainment {
+  id           String  @id @default(uuid())
+  enrollmentId String  @map("enrollment_id")
+  cloId        String  @map("clo_id")
+  score        Decimal @db.Decimal(5, 2)
+
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  clo        Clo        @relation(fields: [cloId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, cloId])
+  @@map("clo_attainments")
+}
+
+// ---------------------------------------------------------------------------
+// Evaluation (narrative)
+// ---------------------------------------------------------------------------
+
+enum EvaluationStatus {
+  DRAFT
+  FINAL
+
+  @@map("evaluation_status")
+}
+
+model PiEvaluation {
+  id                   String           @id @default(uuid())
+  piId                 String           @map("pi_id")
+  cohortId             String           @map("cohort_id")
+  benchmarkDescription String?          @map("benchmark_description")
+  targetPercentage     Decimal?         @map("target_percentage") @db.Decimal(5, 2)
+  resultsNarrative     String?          @map("results_narrative")
+  status               EvaluationStatus @default(DRAFT)
+  createdById          String?          @map("created_by")
+  createdAt            DateTime         @default(now()) @map("created_at")
+  updatedAt            DateTime         @updatedAt @map("updated_at")
+
+  pi        PerformanceIndicator @relation(fields: [piId], references: [id], onDelete: Cascade)
+  cohort    Cohort               @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  createdBy User?                @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([piId, cohortId])
+  @@map("pi_evaluations")
+}
+
+// ---------------------------------------------------------------------------
+// Auth / RBAC
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String  @id @default(uuid())
+  email        String  @unique
+  passwordHash String  @map("password_hash")
+  fullName     String  @map("full_name")
+  isActive     Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  programRoles UserProgramRole[]
+  evaluations  PiEvaluation[]
+
+  @@map("users")
+}
+
+enum ProgramRole {
+  ADMIN
+  PROGRAM_CHAIR
+  FACULTY
+  VIEWER
+
+  @@map("program_role")
+}
+
+model UserProgramRole {
+  id        String      @id @default(uuid())
+  userId    String      @map("user_id")
+  programId String      @map("program_id")
+  role      ProgramRole
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, programId])
+  @@map("user_program_roles")
+}

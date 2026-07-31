@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: msuiit-cqi-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cqi
+      POSTGRES_PASSWORD: cqi
+      POSTGRES_DB: msuiit_cqi
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cqi -d msuiit_cqi"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres-data:
