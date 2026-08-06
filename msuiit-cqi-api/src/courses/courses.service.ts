@@ -11,8 +11,11 @@ export class CoursesService {
     return this.prisma.course.create({ data: dto });
   }
 
-  findAll() {
+  findAll(programId?: string) {
     return this.prisma.course.findMany({
+      where: programId
+        ? { curriculumCourses: { some: { programId } } }
+        : undefined,
       orderBy: { code: 'asc' },
       include: { clos: { orderBy: { displayOrder: 'asc' } } },
     });

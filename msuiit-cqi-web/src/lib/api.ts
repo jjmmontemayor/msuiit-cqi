@@ -41,6 +41,19 @@ export interface Course {
   id: string;
   code: string;
   title: string;
+  description: string | null;
+}
+
+export interface CurriculumCourse {
+  id: string;
+  programId: string;
+  courseId: string;
+  electiveGroup: string | null;
+  yearLevel: number | null;
+  term: string | null;
+  displayOrder: number;
+  isActive: boolean;
+  course: Course & { clos: Clo[] };
 }
 
 export interface Clo {
@@ -68,10 +81,20 @@ export interface PerformanceIndicator {
   displayOrder: number;
 }
 
+export interface Cohort {
+  id: string;
+  programId: string;
+  code: string;
+  startYear: number;
+  endYear: number;
+  description: string | null;
+}
+
 export interface CloPloMapping {
   id: string;
   cloId: string;
   ploId: string;
+  cohortId: string;
   levelCode: 'I' | 'P' | 'D';
   piId: string | null;
   assessmentMethod: string | null;
@@ -84,6 +107,8 @@ export interface PloAttainmentByCourseRow {
   plo_code: string;
   weighted_attainment: string;
   attainment_count: string;
+  cohort_id: string;
+  cohort_code: string;
 }
 
 export interface PloAttainmentByStudentRow {
@@ -93,6 +118,25 @@ export interface PloAttainmentByStudentRow {
   plo_code: string;
   weighted_attainment: string;
   attainment_count: string;
+  cohort_id: string;
+}
+
+export interface CloAttainmentByStudentRow {
+  course_id: string;
+  course_code: string;
+  clo_id: string;
+  clo_code: string;
+  score: string;
+}
+
+export interface Student {
+  id: string;
+  studentNumber: string;
+  firstName: string;
+  lastName: string;
+  programId: string;
+  cohortId: string;
+  status: 'ACTIVE' | 'GRADUATED' | 'WITHDRAWN';
 }
 
 export interface PiEvaluation {

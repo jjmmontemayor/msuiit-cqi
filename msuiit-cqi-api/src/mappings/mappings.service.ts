@@ -11,11 +11,17 @@ export class MappingsService {
     return this.prisma.cloPloMapping.create({ data: dto });
   }
 
-  findAll(params: { cloId?: string; ploId?: string; courseId?: string }) {
+  findAll(params: {
+    cloId?: string;
+    ploId?: string;
+    courseId?: string;
+    cohortId?: string;
+  }) {
     return this.prisma.cloPloMapping.findMany({
       where: {
         cloId: params.cloId,
         ploId: params.ploId,
+        cohortId: params.cohortId,
         clo: params.courseId ? { courseId: params.courseId } : undefined,
       },
       include: { level: true, pi: true },

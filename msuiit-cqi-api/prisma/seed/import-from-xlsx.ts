@@ -303,11 +303,14 @@ async function main() {
           : undefined;
 
       await prisma.cloPloMapping.upsert({
-        where: { cloId_ploId: { cloId: clo.id, ploId: plo.id } },
+        where: {
+          cloId_ploId_cohortId: { cloId: clo.id, ploId: plo.id, cohortId: cohort.id },
+        },
         update: {},
         create: {
           cloId: clo.id,
           ploId: plo.id,
+          cohortId: cohort.id,
           levelCode: level,
           piId: matchingPi ? piByCode.get(matchingPi.code)!.id : null,
           assessmentMethod: matchingPi ? PI_ASSESSMENT_METHOD : null,

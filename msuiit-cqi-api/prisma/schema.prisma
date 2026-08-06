@@ -158,20 +158,27 @@ model Clo {
 // tagged with which PI it evidences and how it's assessed. Making PI
 // mandatory here would make it impossible to import/record a CLO->PLO
 // mapping before every PI has been written up.
+//
+// `cohortId` scopes the mapping to one batch: curricula get revised over
+// time, so the same CLO can map to a PLO at a different I/P/D level (or not
+// at all) for a later batch. Each cohort therefore owns its own complete
+// mapping set rather than sharing one global table.
 model CloPloMapping {
   id               String           @id @default(uuid())
   cloId            String           @map("clo_id")
   ploId            String           @map("plo_id")
+  cohortId         String           @map("cohort_id")
   levelCode        MappingLevelCode @map("level_code")
   piId             String?          @map("pi_id")
   assessmentMethod String?          @map("assessment_method")
 
-  clo   Clo                   @relation(fields: [cloId], references: [id], onDelete: Cascade)
-  plo   Plo                   @relation(fields: [ploId], references: [id], onDelete: Cascade)
-  pi    PerformanceIndicator? @relation(fields: [piId], references: [id], onDelete: SetNull)
-  level MappingLevel          @relation(fields: [levelCode], references: [code])
+  clo    Clo                   @relation(fields: [cloId], references: [id], onDelete: Cascade)
+  plo    Plo                   @relation(fields: [ploId], references: [id], onDelete: Cascade)
+  cohort Cohort                @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  pi     PerformanceIndicator? @relation(fields: [piId], references: [id], onDelete: SetNull)
+  level  MappingLevel          @relation(fields: [levelCode], references: [code])
 
-  @@unique([cloId, ploId])
+  @@unique([cloId, ploId, cohortId])
   @@map("clo_plo_mappings")
 }
 
@@ -187,9 +194,10 @@ model Cohort {
   endYear     Int     @map("end_year")
   description String?
 
-  program     Program        @relation(fields: [programId], references: [id], onDelete: Cascade)
-  students    Student[]
-  evaluations PiEvaluation[]
+  program        Program         @relation(fields: [programId], references: [id], onDelete: Cascade)
+  students       Student[]
+  evaluations    PiEvaluation[]
+  cloPloMappings CloPloMapping[]
 
   @@unique([programId, code])
   @@map("cohorts")

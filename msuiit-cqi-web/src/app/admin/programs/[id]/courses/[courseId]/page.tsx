@@ -1,0 +1,130 @@
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { apiFetch, ApiError, type Clo, type Course, type Program } from '@/lib/api';
+import { createClo, deleteClo } from '../../../../actions';
+
+export const dynamic = 'force-dynamic';
+
+type CourseWithClos = Course & { clos: Clo[] };
+
+async function getProgram(id: string): Promise<Program> {
+  try {
+    return await apiFetch<Program>(`/programs/${id}`);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) {
+      notFound();
+    }
+    throw err;
+  }
+}
+
+async function getCourse(id: string): Promise<CourseWithClos> {
+  try {
+    return await apiFetch<CourseWithClos>(`/courses/${id}`);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) {
+      notFound();
+    }
+    throw err;
+  }
+}
+
+export default async function AdminCourseClosPage({
+  params,
+}: {
+  params: Promise<{ id: string; courseId: string }>;
+}) {
+  const { id, courseId } = await params;
+  const [program, course] = await Promise.all([getProgram(id), getCourse(courseId)]);
+
+  const boundCreateClo = createClo.bind(null, program.id, course.id);
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <Link
+          href={`/admin/programs/${program.id}`}
+          className="text-sm text-neutral-500 hover:underline"
+        >
+          &larr; {program.code}
+        </Link>
+        <h1 className="mt-1 text-2xl font-semibold">
+          {course.code} — {course.title}
+        </h1>
+        {course.description && (
+          <p className="mt-1 text-neutral-600 dark:text-neutral-400">
+            {course.description}
+          </p>
+        )}
+      </div>
+
+      <section>
+        <h2 className="text-lg font-medium">Course Learning Outcomes</h2>
+        {course.clos.length === 0 ? (
+          <p className="mt-2 text-sm text-neutral-500">No CLOs yet.</p>
+        ) : (
+          <ul className="mt-3 divide-y divide-neutral-200 rounded-md border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
+            {course.clos.map((clo) => (
+              <li key={clo.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                <div className="text-sm">
+                  <span className="font-medium">{clo.code}</span>
+                  <span className="ml-2 text-neutral-600 dark:text-neutral-400">
+                    {clo.description}
+                  </span>
+                </div>
+                <form action={deleteClo.bind(null, program.id, course.id, clo.id)}>
+                  <button
+                    type="submit"
+                    className="shrink-0 text-sm text-red-600 hover:underline dark:text-red-400"
+                  >
+                    Delete
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <form
+          action={boundCreateClo}
+          className="mt-3 grid gap-3 rounded-md border border-neutral-200 p-4 sm:grid-cols-4 dark:border-neutral-800"
+        >
+          <label className="text-sm">
+            Code
+            <input
+              name="code"
+              required
+              maxLength={20}
+              placeholder="CLO1"
+              className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            />
+          </label>
+          <label className="text-sm sm:col-span-2">
+            Description
+            <input
+              name="description"
+              required
+              className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            />
+          </label>
+          <label className="text-sm">
+            Display order
+            <input
+              name="displayOrder"
+              type="number"
+              className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            />
+          </label>
+          <div className="sm:col-span-4">
+            <button
+              type="submit"
+              className="rounded-md bg-neutral-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"
+            >
+              Add CLO
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  );
+}

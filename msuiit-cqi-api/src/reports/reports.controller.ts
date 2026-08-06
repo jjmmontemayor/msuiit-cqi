@@ -11,8 +11,11 @@ export class ReportsController {
   }
 
   @Get('plo-attainment-by-course')
-  ploAttainmentByCourse(@Query('courseId') courseId?: string) {
-    return this.reportsService.ploAttainmentByCourse(courseId);
+  ploAttainmentByCourse(
+    @Query('courseId') courseId?: string,
+    @Query('cohortId') cohortId?: string,
+  ) {
+    return this.reportsService.ploAttainmentByCourse({ courseId, cohortId });
   }
 
   @Get('plo-attainment-by-student')
@@ -20,8 +23,16 @@ export class ReportsController {
     return this.reportsService.ploAttainmentByStudent(studentId);
   }
 
+  @Get('clo-attainment-by-student')
+  cloAttainmentByStudent(@Query('studentId') studentId: string) {
+    return this.reportsService.cloAttainmentByStudent(studentId);
+  }
+
   @Get('program-plo-performance')
-  programPloPerformance(@Query('programId') programId?: string) {
-    return this.reportsService.programPloPerformance(programId);
+  programPloPerformance(
+    @Query('programId') programId?: string,
+    @Query('cohortId') cohortId?: string,
+  ) {
+    return this.reportsService.programPloPerformance({ programId, cohortId });
   }
 }

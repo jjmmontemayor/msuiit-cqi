@@ -35,50 +35,32 @@ export default async function DashboardPage() {
         <h2 className="text-lg font-medium">Programs</h2>
         {programs.length === 0 && !error ? (
           <p className="mt-2 text-sm text-neutral-500">
-            No programs yet — run the xlsx import seed script in msuiit-cqi-api.
+            No programs yet —{' '}
+            <Link href="/admin" className="underline">
+              set one up in Admin
+            </Link>
+            , or run the xlsx import seed script in msuiit-cqi-api.
           </p>
         ) : (
           <ul className="mt-3 divide-y divide-neutral-200 rounded-md border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
             {programs.map((program) => (
-              <li key={program.id} className="px-4 py-3">
-                <span className="font-medium">{program.code}</span>
-                <span className="ml-2 text-neutral-600 dark:text-neutral-400">
-                  {program.name}
-                </span>
+              <li key={program.id}>
+                <Link
+                  href={`/programs/${program.id}`}
+                  className="flex items-center justify-between px-4 py-3 hover:bg-neutral-100 dark:hover:bg-neutral-900"
+                >
+                  <span>
+                    <span className="font-medium">{program.code}</span>
+                    <span className="ml-2 text-neutral-600 dark:text-neutral-400">
+                      {program.name}
+                    </span>
+                  </span>
+                  <span className="text-neutral-400">&rarr;</span>
+                </Link>
               </li>
             ))}
           </ul>
         )}
-      </section>
-
-      <section className="grid gap-4 sm:grid-cols-3">
-        <Link
-          href="/mappings"
-          className="rounded-md border border-neutral-200 p-4 hover:border-neutral-400 dark:border-neutral-800 dark:hover:border-neutral-600"
-        >
-          <h3 className="font-medium">CLO-PLO Mapping</h3>
-          <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-            View how course learning outcomes map to program learning outcomes.
-          </p>
-        </Link>
-        <Link
-          href="/reports"
-          className="rounded-md border border-neutral-200 p-4 hover:border-neutral-400 dark:border-neutral-800 dark:hover:border-neutral-600"
-        >
-          <h3 className="font-medium">Attainment Reports</h3>
-          <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-            PLO attainment rolled up by course and by student.
-          </p>
-        </Link>
-        <Link
-          href="/evaluations"
-          className="rounded-md border border-neutral-200 p-4 hover:border-neutral-400 dark:border-neutral-800 dark:hover:border-neutral-600"
-        >
-          <h3 className="font-medium">Evaluations</h3>
-          <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-            Performance indicator benchmarks, targets, and narrative results.
-          </p>
-        </Link>
       </section>
     </div>
   );

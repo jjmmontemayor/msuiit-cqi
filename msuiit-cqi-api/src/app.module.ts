@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProgramsModule } from './programs/programs.module';
 import { CoursesModule } from './courses/courses.module';
+import { CurriculumCoursesModule } from './curriculum-courses/curriculum-courses.module';
 import { ClosModule } from './clos/clos.module';
 import { PlosModule } from './plos/plos.module';
 import { PerformanceIndicatorsModule } from './performance-indicators/performance-indicators.module';
@@ -26,6 +27,7 @@ import { AuthModule } from './auth/auth.module';
     PrismaModule,
     ProgramsModule,
     CoursesModule,
+    CurriculumCoursesModule,
     ClosModule,
     PlosModule,
     PerformanceIndicatorsModule,

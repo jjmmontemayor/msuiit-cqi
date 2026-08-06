@@ -8,6 +8,9 @@ export class CreateMappingDto {
   @IsUUID()
   ploId!: string;
 
+  @IsUUID()
+  cohortId!: string;
+
   @IsEnum(MappingLevelCode)
   levelCode!: MappingLevelCode;
 
