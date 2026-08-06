@@ -41,7 +41,8 @@ const PI_DEFINITIONS: {
 }[] = [
   {
     code: 'PI1',
-    description: 'Identify the variables, objectives and constraints in a problem',
+    description:
+      'Identify the variables, objectives and constraints in a problem',
     keyCourseCode: 'CCC100',
     keyCloCode: 'CLO1',
   },
@@ -54,7 +55,8 @@ const PI_DEFINITIONS: {
   },
   {
     code: 'PI3',
-    description: 'Determine the appropriate formula for a particular engineering problem',
+    description:
+      'Determine the appropriate formula for a particular engineering problem',
     // The workbook's Evaluation sheet cites "CCC124/CLO1" here, but no
     // CCC124 exists anywhere else in the workbook (course list runs
     // CCC100/101/102/121/151/181 then CSC...). Treated as a typo for
@@ -64,7 +66,10 @@ const PI_DEFINITIONS: {
   },
 ];
 
-function parseElective(label: string): { code: string; electiveGroup: string | null } {
+function parseElective(label: string): {
+  code: string;
+  electiveGroup: string | null;
+} {
   const m = label.match(/^Elective (\d+) \(([^)]+)\)$/);
   if (m) {
     return { code: m[2], electiveGroup: `Elective ${m[1]}` };
@@ -77,7 +82,10 @@ function splitName(fullName: string): { firstName: string; lastName: string } {
   if (parts.length === 1) {
     return { firstName: parts[0], lastName: parts[0] };
   }
-  return { firstName: parts.slice(0, -1).join(' '), lastName: parts[parts.length - 1] };
+  return {
+    firstName: parts.slice(0, -1).join(' '),
+    lastName: parts[parts.length - 1],
+  };
 }
 
 async function main() {
@@ -131,7 +139,9 @@ async function main() {
   for (let i = 1; i <= 11; i++) {
     const code = `PLO${i}`;
     const description =
-      code === 'PLO1' ? PLO1_DESCRIPTION : `Description not yet documented for ${code}.`;
+      code === 'PLO1'
+        ? PLO1_DESCRIPTION
+        : `Description not yet documented for ${code}.`;
     const plo = await prisma.plo.upsert({
       where: { programId_code: { programId: program.id, code } },
       update: {},
@@ -186,7 +196,11 @@ async function main() {
     if (code) ploColIndexToCode.set(c, String(code));
   }
 
-  type CourseInfo = { code: string; electiveGroup: string | null; order: number };
+  type CourseInfo = {
+    code: string;
+    electiveGroup: string | null;
+    order: number;
+  };
   const courses: CourseInfo[] = [];
 
   type CloMappingRow = {
@@ -221,11 +235,18 @@ async function main() {
       for (const [colIdx, ploCode] of ploColIndexToCode) {
         const val = row[colIdx];
         if (val) {
-          ploLevels.push({ ploCode, level: String(val).trim() as MappingLevelCode });
+          ploLevels.push({
+            ploCode,
+            level: String(val).trim() as MappingLevelCode,
+          });
         }
       }
       if (ploLevels.length > 0) {
-        cloMappingRows.push({ courseCode: currentCourseCode, cloCode, ploLevels });
+        cloMappingRows.push({
+          courseCode: currentCourseCode,
+          cloCode,
+          ploLevels,
+        });
       }
     }
   }
@@ -245,7 +266,9 @@ async function main() {
     courseByCode.set(c.code, course);
 
     await prisma.curriculumCourse.upsert({
-      where: { programId_courseId: { programId: program.id, courseId: course.id } },
+      where: {
+        programId_courseId: { programId: program.id, courseId: course.id },
+      },
       update: {},
       create: {
         programId: program.id,
@@ -256,7 +279,10 @@ async function main() {
     });
   }
 
-  const distinctClos = new Map<string, { courseCode: string; cloCode: string }>();
+  const distinctClos = new Map<
+    string,
+    { courseCode: string; cloCode: string }
+  >();
   for (const row of cloMappingRows) {
     distinctClos.set(`${row.courseCode}::${row.cloCode}`, row);
   }
@@ -298,13 +324,18 @@ async function main() {
         ploCode === 'PLO1'
           ? PI_DEFINITIONS.find(
               (def) =>
-                def.keyCourseCode === row.courseCode && def.keyCloCode === row.cloCode,
+                def.keyCourseCode === row.courseCode &&
+                def.keyCloCode === row.cloCode,
             )
           : undefined;
 
       await prisma.cloPloMapping.upsert({
         where: {
-          cloId_ploId_cohortId: { cloId: clo.id, ploId: plo.id, cohortId: cohort.id },
+          cloId_ploId_cohortId: {
+            cloId: clo.id,
+            ploId: plo.id,
+            cohortId: cohort.id,
+          },
         },
         update: {},
         create: {
@@ -394,15 +425,23 @@ async function main() {
     const student = studentByNumber.get(String(studentNumber))!;
 
     for (const block of courseBlocks) {
-      const hasAnyScore = [0, 1, 2].some((i) => row[block.startCol + i] != null);
+      const hasAnyScore = [0, 1, 2].some(
+        (i) => row[block.startCol + i] != null,
+      );
       if (!hasAnyScore) continue;
       const offering = offeringByCourseCode.get(block.courseCode);
       if (!offering) continue;
-      enrollmentPairs.push({ studentId: student.id, courseOfferingId: offering.id });
+      enrollmentPairs.push({
+        studentId: student.id,
+        courseOfferingId: offering.id,
+      });
     }
   }
 
-  await prisma.enrollment.createMany({ data: enrollmentPairs, skipDuplicates: true });
+  await prisma.enrollment.createMany({
+    data: enrollmentPairs,
+    skipDuplicates: true,
+  });
 
   const allEnrollments = await prisma.enrollment.findMany({
     where: { student: { programId: program.id, cohortId: cohort.id } },
@@ -411,7 +450,11 @@ async function main() {
     allEnrollments.map((e) => [`${e.studentId}::${e.courseOfferingId}`, e.id]),
   );
 
-  const attainmentRows: { enrollmentId: string; cloId: string; score: number }[] = [];
+  const attainmentRows: {
+    enrollmentId: string;
+    cloId: string;
+    score: number;
+  }[] = [];
   for (const row of studentDataRows) {
     const studentNumber = row[0];
     if (!studentNumber) continue;
@@ -429,7 +472,11 @@ async function main() {
         const cloCode = `CLO${i + 1}`;
         const clo = cloByKey.get(`${block.courseCode}::${cloCode}`);
         if (!clo) continue;
-        attainmentRows.push({ enrollmentId, cloId: clo.id, score: Number(score) });
+        attainmentRows.push({
+          enrollmentId,
+          cloId: clo.id,
+          score: Number(score),
+        });
       }
     }
   }
