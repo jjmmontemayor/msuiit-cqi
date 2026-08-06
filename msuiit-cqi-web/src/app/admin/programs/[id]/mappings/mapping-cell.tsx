@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { setMapping } from './actions';
+import { LEVEL_SELECT_CLASSES } from '@/lib/mapping-level-colors';
 
 type Level = 'I' | 'P' | 'D' | '';
 
@@ -34,7 +35,7 @@ export function MappingCell({
           await setMapping(programId, cohortId, cloId, ploId, next);
         });
       }}
-      className="h-7 w-14 rounded border border-neutral-300 bg-white text-center text-xs font-medium disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900"
+      className={`h-7 w-14 rounded border border-neutral-300 text-center text-xs font-medium disabled:opacity-50 dark:border-neutral-700 ${LEVEL_SELECT_CLASSES[level]}`}
     >
       {LEVELS.map((l) => (
         <option key={l} value={l}>

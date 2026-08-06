@@ -86,9 +86,11 @@ export default async function AdminMappingsPage({
           CLO-PLO Mapping — {program.code}
         </h1>
         <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-          Click a cell to set the mapping level: I = Introduced, P = Practiced, D =
-          Demonstrated, — = not mapped. Each batch has its own mapping — changes
-          save immediately.
+          Click a cell to set the mapping level:{' '}
+          <span className="font-medium text-blue-600 dark:text-blue-400">I = Introduced</span>,{' '}
+          <span className="font-medium text-amber-600 dark:text-amber-400">P = Practiced</span>,{' '}
+          <span className="font-medium text-emerald-600 dark:text-emerald-400">D = Demonstrated</span>,
+          — = not mapped. Each batch has its own mapping — changes save immediately.
         </p>
       </div>
 

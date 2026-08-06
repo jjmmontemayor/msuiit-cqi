@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { apiFetch, type Clo, type Cohort, type CloPloMapping, type Course, type Plo } from '@/lib/api';
 import { buildPloSummary } from '@/lib/mapping-summary';
 import { MappingSummaryTable } from '@/components/mapping-summary-table';
+import { LEVEL_BADGE_CLASSES } from '@/lib/mapping-level-colors';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,8 +53,11 @@ export default async function MappingsPage({
     <div className="flex flex-1 flex-col space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          Mapping level per course learning outcome: I = Introduced, P =
-          Practiced, D = Demonstrated. Each batch has its own mapping.
+          Mapping level per course learning outcome:{' '}
+          <span className="font-medium text-blue-600 dark:text-blue-400">I = Introduced</span>,{' '}
+          <span className="font-medium text-amber-600 dark:text-amber-400">P = Practiced</span>,{' '}
+          <span className="font-medium text-emerald-600 dark:text-emerald-400">D = Demonstrated</span>.
+          Each batch has its own mapping.
         </p>
         <form method="get" className="flex items-end gap-2">
           <label className="text-sm">
@@ -134,7 +138,7 @@ export default async function MappingsPage({
                         <td key={plo.id} className="px-3 py-1.5 text-center">
                           {mapping ? (
                             <span
-                              className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-neutral-800 text-xs font-medium text-white dark:bg-neutral-200 dark:text-neutral-900"
+                              className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium ${LEVEL_BADGE_CLASSES[mapping.levelCode]}`}
                               title={mapping.assessmentMethod ?? undefined}
                             >
                               {mapping.levelCode}

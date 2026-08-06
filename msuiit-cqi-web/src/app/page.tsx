@@ -19,10 +19,6 @@ export default async function DashboardPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold">Program Assessment &amp; Evaluation</h1>
-        <p className="mt-1 text-neutral-600 dark:text-neutral-400">
-          CLO-to-PLO attainment tracking, replacing the manually-maintained CQI
-          workbook.
-        </p>
       </div>
 
       {error && (

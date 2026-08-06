@@ -2,6 +2,7 @@
 
 import { Fragment, useState } from 'react';
 import type { PloSummaryRow } from '@/lib/mapping-summary';
+import { LEVEL_TEXT_CLASSES } from '@/lib/mapping-level-colors';
 
 type SortKey = 'I' | 'P' | 'D' | 'Total';
 
@@ -78,9 +79,9 @@ export function MappingSummaryTable({ rows }: { rows: PloSummaryRow[] }) {
                       {row.ploDescription}
                     </div>
                   </td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{row.I}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{row.P}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{row.D}</td>
+                  <td className={`px-3 py-1.5 text-right font-medium tabular-nums ${LEVEL_TEXT_CLASSES.I}`}>{row.I}</td>
+                  <td className={`px-3 py-1.5 text-right font-medium tabular-nums ${LEVEL_TEXT_CLASSES.P}`}>{row.P}</td>
+                  <td className={`px-3 py-1.5 text-right font-medium tabular-nums ${LEVEL_TEXT_CLASSES.D}`}>{row.D}</td>
                   <td className="px-3 py-1.5 text-right font-medium tabular-nums">
                     {totalOf(row)}
                   </td>
@@ -108,9 +109,9 @@ export function MappingSummaryTable({ rows }: { rows: PloSummaryRow[] }) {
                                 className="border-t border-neutral-200 dark:border-neutral-800"
                               >
                                 <td className="px-2 py-1">{c.courseCode}</td>
-                                <td className="px-2 py-1 text-right tabular-nums">{c.I}</td>
-                                <td className="px-2 py-1 text-right tabular-nums">{c.P}</td>
-                                <td className="px-2 py-1 text-right tabular-nums">{c.D}</td>
+                                <td className={`px-2 py-1 text-right tabular-nums ${LEVEL_TEXT_CLASSES.I}`}>{c.I}</td>
+                                <td className={`px-2 py-1 text-right tabular-nums ${LEVEL_TEXT_CLASSES.P}`}>{c.P}</td>
+                                <td className={`px-2 py-1 text-right tabular-nums ${LEVEL_TEXT_CLASSES.D}`}>{c.D}</td>
                                 <td className="px-2 py-1 text-right tabular-nums">
                                   {c.I + c.P + c.D}
                                 </td>
