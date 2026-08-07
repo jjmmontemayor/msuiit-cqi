@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { apiFetch, ApiError, type Clo, type Course, type Program } from '@/lib/api';
-import { BackLink } from '@/components/back-link';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,7 +39,12 @@ export default async function CourseDetailsPage({
   return (
     <div className="space-y-8">
       <div>
-        <BackLink label={program.code} fallbackHref={`/programs/${program.id}`} />
+        <Link
+          href={`/programs/${program.id}`}
+          className="text-sm text-neutral-500 hover:underline"
+        >
+          &larr; {program.code}
+        </Link>
         <div className="mt-1 flex items-start gap-2">
           <h1 className="text-2xl font-semibold">
             {course.code} — {course.title}
