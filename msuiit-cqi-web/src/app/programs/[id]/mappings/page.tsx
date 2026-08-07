@@ -121,7 +121,14 @@ export default async function MappingsPage({
                         rowSpan={course.clos.length}
                         className="sticky left-0 z-10 w-36 whitespace-nowrap bg-white px-3 py-1.5 align-top font-medium dark:bg-neutral-950"
                       >
-                        {course.code}
+                        <Link
+                          href={`/programs/${id}/courses/${course.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:underline"
+                        >
+                          {course.code}
+                        </Link>
                       </td>
                     )}
                     <td className="sticky left-[9rem] z-10 w-64 bg-white px-3 py-1.5 align-top dark:bg-neutral-950">

@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { apiFetch, type CloAttainmentByStudentRow, type Student } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
@@ -90,7 +91,20 @@ export default async function CloAttainmentByStudentPage({
                             key={row.clo_id}
                             className="border-t border-neutral-200 dark:border-neutral-800"
                           >
-                            <td className="px-3 py-1.5">{i === 0 ? courseCode : ''}</td>
+                            <td className="px-3 py-1.5">
+                              {i === 0 ? (
+                                <Link
+                                  href={`/programs/${id}/courses/${row.course_id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="hover:underline"
+                                >
+                                  {courseCode}
+                                </Link>
+                              ) : (
+                                ''
+                              )}
+                            </td>
                             <td className="px-3 py-1.5">{row.clo_code}</td>
                             <td className="px-3 py-1.5 text-right tabular-nums">
                               {Number(row.score).toFixed(2)}

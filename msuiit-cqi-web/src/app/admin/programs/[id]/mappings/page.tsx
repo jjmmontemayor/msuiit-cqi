@@ -184,7 +184,9 @@ export default async function AdminMappingsPage({
                         className="sticky left-0 z-10 w-36 whitespace-nowrap bg-white px-3 py-1.5 align-top font-medium dark:bg-neutral-950"
                       >
                         <Link
-                          href={`/admin/programs/${program.id}/courses/${course.id}`}
+                          href={`/programs/${program.id}/courses/${course.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className="hover:underline"
                         >
                           {course.code}
