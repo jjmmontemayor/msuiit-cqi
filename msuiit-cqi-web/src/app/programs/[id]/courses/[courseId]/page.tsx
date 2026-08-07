@@ -45,9 +45,27 @@ export default async function CourseDetailsPage({
         >
           &larr; {program.code}
         </Link>
-        <h1 className="mt-1 text-2xl font-semibold">
-          {course.code} — {course.title}
-        </h1>
+        <div className="mt-1 flex items-start gap-2">
+          <h1 className="text-2xl font-semibold">
+            {course.code} — {course.title}
+          </h1>
+          <Link
+            href={`/admin/programs/${program.id}/courses/${course.id}`}
+            title="Edit course"
+            aria-label="Edit course"
+            className="mt-1 shrink-0 rounded-md p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className="h-4 w-4"
+              aria-hidden="true"
+            >
+              <path d="M13.586 3.586a2 2 0 1 1 2.828 2.828l-.793.793-2.828-2.828.793-.793ZM11.379 5.793 3 14.172V17h2.828l8.38-8.379-2.83-2.828Z" />
+            </svg>
+          </Link>
+        </div>
         {course.description && (
           <p className="mt-1 text-neutral-600 dark:text-neutral-400">
             {course.description}
