@@ -18,7 +18,9 @@ export class CurriculumCoursesService {
     return this.prisma.curriculumCourse.findMany({
       where: programId ? { programId } : undefined,
       orderBy: [{ yearLevel: 'asc' }, { displayOrder: 'asc' }],
-      include: { course: { include: { clos: { orderBy: { displayOrder: 'asc' } } } } },
+      include: {
+        course: { include: { clos: { orderBy: { displayOrder: 'asc' } } } },
+      },
     });
   }
 

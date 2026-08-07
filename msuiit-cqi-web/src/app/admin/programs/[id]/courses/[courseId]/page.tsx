@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { apiFetch, ApiError, type Clo, type Course, type Program } from '@/lib/api';
-import { createClo, deleteClo } from '../../../../actions';
+import { createClo, deleteClo, updateCourseDetails } from '../../../../actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,6 +38,7 @@ export default async function AdminCourseClosPage({
   const [program, course] = await Promise.all([getProgram(id), getCourse(courseId)]);
 
   const boundCreateClo = createClo.bind(null, program.id, course.id);
+  const boundUpdateCourseDetails = updateCourseDetails.bind(null, program.id, course.id);
 
   return (
     <div className="space-y-8">
@@ -51,12 +52,92 @@ export default async function AdminCourseClosPage({
         <h1 className="mt-1 text-2xl font-semibold">
           {course.code} — {course.title}
         </h1>
-        {course.description && (
-          <p className="mt-1 text-neutral-600 dark:text-neutral-400">
-            {course.description}
-          </p>
-        )}
       </div>
+
+      <section>
+        <h2 className="text-lg font-medium">Course Details</h2>
+        <form
+          action={boundUpdateCourseDetails}
+          className="mt-3 grid gap-3 rounded-md border border-neutral-200 p-4 sm:grid-cols-4 dark:border-neutral-800"
+        >
+          <label className="text-sm">
+            Code
+            <input
+              name="code"
+              required
+              maxLength={20}
+              defaultValue={course.code}
+              className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            />
+          </label>
+          <label className="text-sm sm:col-span-3">
+            Title
+            <input
+              name="title"
+              required
+              maxLength={255}
+              defaultValue={course.title}
+              className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            />
+          </label>
+          <label className="text-sm sm:col-span-4">
+            Description
+            <textarea
+              name="description"
+              rows={3}
+              defaultValue={course.description ?? ''}
+              className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            />
+          </label>
+          <label className="text-sm">
+            Credits (units)
+            <input
+              name="credits"
+              type="number"
+              min={0}
+              defaultValue={course.credits ?? ''}
+              className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            />
+          </label>
+          <label className="text-sm">
+            Lecture hours / week
+            <input
+              name="lectureHours"
+              type="number"
+              min={0}
+              defaultValue={course.lectureHours ?? ''}
+              className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            />
+          </label>
+          <label className="text-sm">
+            Lab hours / week
+            <input
+              name="labHours"
+              type="number"
+              min={0}
+              defaultValue={course.labHours ?? ''}
+              className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            />
+          </label>
+          <label className="text-sm">
+            Prerequisites
+            <input
+              name="prerequisites"
+              placeholder="CSC142"
+              defaultValue={course.prerequisites ?? ''}
+              className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            />
+          </label>
+          <div className="sm:col-span-4">
+            <button
+              type="submit"
+              className="rounded-md bg-neutral-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"
+            >
+              Save Details
+            </button>
+          </div>
+        </form>
+      </section>
 
       <section>
         <h2 className="text-lg font-medium">Course Learning Outcomes</h2>

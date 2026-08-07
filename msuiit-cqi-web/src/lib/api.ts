@@ -42,6 +42,10 @@ export interface Course {
   code: string;
   title: string;
   description: string | null;
+  credits: number | null;
+  lectureHours: number | null;
+  labHours: number | null;
+  prerequisites: string | null;
 }
 
 export interface CurriculumCourse {

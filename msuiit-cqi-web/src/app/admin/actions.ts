@@ -137,6 +137,33 @@ export async function unlinkCourse(programId: string, curriculumCourseId: string
   revalidatePath(`/programs/${programId}`);
 }
 
+export async function updateCourseDetails(
+  programId: string,
+  courseId: string,
+  formData: FormData,
+) {
+  const code = str(formData, 'code');
+  const title = str(formData, 'title');
+  const description = str(formData, 'description');
+  const prerequisites = str(formData, 'prerequisites');
+
+  await apiFetch(`/courses/${courseId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      code,
+      title,
+      description: description || undefined,
+      credits: optInt(formData, 'credits'),
+      lectureHours: optInt(formData, 'lectureHours'),
+      labHours: optInt(formData, 'labHours'),
+      prerequisites: prerequisites || undefined,
+    }),
+  });
+
+  revalidatePath(`/admin/programs/${programId}/courses/${courseId}`);
+  revalidatePath(`/admin/programs/${programId}`);
+}
+
 export async function createClo(
   programId: string,
   courseId: string,

@@ -32,12 +32,16 @@ model Program {
 }
 
 model Course {
-  id          String   @id @default(uuid())
-  code        String   @unique
-  title       String
-  description String?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id            String   @id @default(uuid())
+  code          String   @unique
+  title         String
+  description   String?
+  credits       Int?
+  lectureHours  Int?     @map("lecture_hours")
+  labHours      Int?     @map("lab_hours")
+  prerequisites String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   curriculumCourses CurriculumCourse[]
   clos              Clo[]

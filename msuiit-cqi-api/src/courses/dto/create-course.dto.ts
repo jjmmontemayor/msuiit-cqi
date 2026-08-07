@@ -1,4 +1,4 @@
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
 export class CreateCourseDto {
   @IsString()
@@ -12,4 +12,24 @@ export class CreateCourseDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  credits?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  lectureHours?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  labHours?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  prerequisites?: string;
 }
