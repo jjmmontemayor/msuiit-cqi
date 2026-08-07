@@ -1,7 +1,7 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { apiFetch, ApiError, type Clo, type Course, type CurriculumCourse, type Program } from '@/lib/api';
 import { createClo, deleteClo, updateCourseDetails } from '../../../../actions';
+import { BackLink } from '@/components/back-link';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,12 +52,7 @@ export default async function AdminCourseClosPage({
   return (
     <div className="space-y-8">
       <div>
-        <Link
-          href={`/admin/programs/${program.id}`}
-          className="text-sm text-neutral-500 hover:underline"
-        >
-          &larr; {program.code}
-        </Link>
+        <BackLink label={program.code} fallbackHref={`/admin/programs/${program.id}`} />
         <h1 className="mt-1 text-2xl font-semibold">
           {course.code} — {course.title}
         </h1>
