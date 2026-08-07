@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, type Clo } from '@/lib/api';
 
 function str(formData: FormData, key: string): string {
   return String(formData.get(key) ?? '').trim();
@@ -169,8 +169,16 @@ export async function createClo(
   courseId: string,
   formData: FormData,
 ) {
-  const code = str(formData, 'code');
   const description = str(formData, 'description');
+
+  const existing = await apiFetch<Clo[]>(`/clos?courseId=${courseId}`);
+  const nextNumber =
+    1 +
+    existing.reduce((max, clo) => {
+      const n = Number(clo.code.match(/^CLO(\d+)$/)?.[1]);
+      return Number.isFinite(n) ? Math.max(max, n) : max;
+    }, 0);
+  const code = `CLO${nextNumber}`;
 
   await apiFetch('/clos', {
     method: 'POST',
@@ -178,7 +186,7 @@ export async function createClo(
       courseId,
       code,
       description,
-      displayOrder: optInt(formData, 'displayOrder'),
+      displayOrder: optInt(formData, 'displayOrder') ?? nextNumber,
     }),
   });
 

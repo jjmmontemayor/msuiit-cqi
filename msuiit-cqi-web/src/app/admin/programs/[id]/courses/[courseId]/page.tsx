@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { apiFetch, ApiError, type Clo, type Course, type Program } from '@/lib/api';
+import { apiFetch, ApiError, type Clo, type Course, type CurriculumCourse, type Program } from '@/lib/api';
 import { createClo, deleteClo, updateCourseDetails } from '../../../../actions';
 
 export const dynamic = 'force-dynamic';
@@ -35,7 +35,16 @@ export default async function AdminCourseClosPage({
   params: Promise<{ id: string; courseId: string }>;
 }) {
   const { id, courseId } = await params;
-  const [program, course] = await Promise.all([getProgram(id), getCourse(courseId)]);
+  const [program, course, curriculumCourses] = await Promise.all([
+    getProgram(id),
+    getCourse(courseId),
+    apiFetch<CurriculumCourse[]>(`/curriculum-courses?programId=${id}`),
+  ]);
+
+  const otherCourses = curriculumCourses
+    .map((cc) => cc.course)
+    .filter((c) => c.id !== course.id)
+    .sort((a, b) => a.code.localeCompare(b.code));
 
   const boundCreateClo = createClo.bind(null, program.id, course.id);
   const boundUpdateCourseDetails = updateCourseDetails.bind(null, program.id, course.id);
@@ -121,12 +130,18 @@ export default async function AdminCourseClosPage({
           </label>
           <label className="text-sm">
             Prerequisites
-            <input
+            <select
               name="prerequisites"
-              placeholder="CSC142"
               defaultValue={course.prerequisites ?? ''}
               className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-            />
+            >
+              <option value="">None</option>
+              {otherCourses.map((c) => (
+                <option key={c.id} value={c.code}>
+                  {c.code} — {c.title}
+                </option>
+              ))}
+            </select>
           </label>
           <div className="sm:col-span-4">
             <button
@@ -170,17 +185,10 @@ export default async function AdminCourseClosPage({
           action={boundCreateClo}
           className="mt-3 grid gap-3 rounded-md border border-neutral-200 p-4 sm:grid-cols-4 dark:border-neutral-800"
         >
-          <label className="text-sm">
-            Code
-            <input
-              name="code"
-              required
-              maxLength={20}
-              placeholder="CLO1"
-              className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-            />
-          </label>
-          <label className="text-sm sm:col-span-2">
+          <p className="text-xs text-neutral-500 sm:col-span-4">
+            Code is assigned automatically (CLO{course.clos.length + 1}).
+          </p>
+          <label className="text-sm sm:col-span-3">
             Description
             <input
               name="description"
@@ -193,6 +201,7 @@ export default async function AdminCourseClosPage({
             <input
               name="displayOrder"
               type="number"
+              placeholder={String(course.clos.length + 1)}
               className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
             />
           </label>
