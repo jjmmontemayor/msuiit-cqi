@@ -7,27 +7,42 @@ import { UpdateCurriculumCourseDto } from './dto/update-curriculum-course.dto';
 export class CurriculumCoursesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(dto: CreateCurriculumCourseDto) {
+  // CLOs are cohort-scoped; nested course.clos here is only used for
+  // display (e.g. a "N CLOs" count), so it's always narrowed to the most
+  // recent cohort rather than every batch's CLOs merged together.
+  private async latestCloWhere() {
+    const latestCohort = await this.prisma.cohort.findFirst({
+      orderBy: { startYear: 'desc' },
+    });
+    return latestCohort ? { cohortId: latestCohort.id } : { cohortId: '__none__' };
+  }
+
+  async create(dto: CreateCurriculumCourseDto) {
+    const cloWhere = await this.latestCloWhere();
     return this.prisma.curriculumCourse.create({
       data: dto,
-      include: { course: { include: { clos: true } } },
+      include: { course: { include: { clos: { where: cloWhere } } } },
     });
   }
 
-  findAll(programId?: string) {
+  async findAll(programId?: string) {
+    const cloWhere = await this.latestCloWhere();
     return this.prisma.curriculumCourse.findMany({
       where: programId ? { programId } : undefined,
       orderBy: [{ yearLevel: 'asc' }, { displayOrder: 'asc' }],
       include: {
-        course: { include: { clos: { orderBy: { displayOrder: 'asc' } } } },
+        course: {
+          include: { clos: { where: cloWhere, orderBy: { displayOrder: 'asc' } } },
+        },
       },
     });
   }
 
   async findOne(id: string) {
+    const cloWhere = await this.latestCloWhere();
     const curriculumCourse = await this.prisma.curriculumCourse.findUnique({
       where: { id },
-      include: { course: { include: { clos: true } } },
+      include: { course: { include: { clos: { where: cloWhere } } } },
     });
     if (!curriculumCourse) {
       throw new NotFoundException(`Curriculum course ${id} not found`);

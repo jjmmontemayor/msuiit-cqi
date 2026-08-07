@@ -63,9 +63,11 @@ export interface CurriculumCourse {
 export interface Clo {
   id: string;
   courseId: string;
+  cohortId: string;
   code: string;
   description: string;
   displayOrder: number;
+  isLocked: boolean;
 }
 
 export interface Plo {

@@ -10,6 +10,9 @@ export class CreateCloDto {
   @IsUUID()
   courseId!: string;
 
+  @IsUUID()
+  cohortId!: string;
+
   @IsString()
   @MaxLength(20)
   code!: string;

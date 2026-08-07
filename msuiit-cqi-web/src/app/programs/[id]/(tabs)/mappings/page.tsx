@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { apiFetch, type Clo, type Cohort, type CloPloMapping, type Course, type Plo } from '@/lib/api';
 import { buildPloSummary } from '@/lib/mapping-summary';
 import { MappingSummaryTable } from '@/components/mapping-summary-table';
-import { LEVEL_BADGE_CLASSES } from '@/lib/mapping-level-colors';
+import { MappingTable } from './mapping-table';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,21 +18,20 @@ export default async function MappingsPage({
   const { id } = await params;
   const { cohortId: cohortIdParam } = await searchParams;
 
-  const [cohorts, plos, courses] = await Promise.all([
+  const [cohorts, plos] = await Promise.all([
     apiFetch<Cohort[]>(`/cohorts?programId=${id}`),
     apiFetch<Plo[]>(`/plos?programId=${id}`),
-    apiFetch<CourseWithClos[]>(`/courses?programId=${id}`),
   ]);
 
   const selectedCohortId = cohortIdParam || cohorts[0]?.id;
-  const mappings = selectedCohortId
-    ? await apiFetch<CloPloMapping[]>(`/mappings?cohortId=${selectedCohortId}`)
-    : [];
-
-  const levelByCloAndPlo = new Map<string, CloPloMapping>();
-  for (const m of mappings) {
-    levelByCloAndPlo.set(`${m.cloId}::${m.ploId}`, m);
-  }
+  const [courses, mappings] = await Promise.all([
+    apiFetch<CourseWithClos[]>(
+      `/courses?programId=${id}${selectedCohortId ? `&cohortId=${selectedCohortId}` : ''}`,
+    ),
+    selectedCohortId
+      ? apiFetch<CloPloMapping[]>(`/mappings?cohortId=${selectedCohortId}`)
+      : Promise.resolve([] as CloPloMapping[]),
+  ]);
 
   const summaryRows = buildPloSummary(plos, courses, mappings);
 
@@ -92,73 +91,14 @@ export default async function MappingsPage({
           .
         </p>
       ) : (
-        <div className="flex-1 overflow-auto rounded-md border border-neutral-200 dark:border-neutral-800">
-          <table className="min-w-full border-collapse text-sm">
-            <thead className="sticky top-0 z-20 bg-neutral-100 dark:bg-neutral-900">
-              <tr>
-                <th className="sticky left-0 z-30 bg-neutral-100 px-3 py-2 text-left dark:bg-neutral-900">
-                  Course
-                </th>
-                <th className="sticky left-[9rem] z-30 bg-neutral-100 px-3 py-2 text-left dark:bg-neutral-900">
-                  CLO
-                </th>
-                {plos.map((plo) => (
-                  <th key={plo.id} className="px-3 py-2 text-center" title={plo.description}>
-                    {plo.code}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {courses.map((course) =>
-                course.clos.map((clo, cloIdx) => (
-                  <tr
-                    key={clo.id}
-                    className="border-t border-neutral-200 dark:border-neutral-800"
-                  >
-                    {cloIdx === 0 && (
-                      <td
-                        rowSpan={course.clos.length}
-                        className="sticky left-0 z-10 w-36 whitespace-nowrap bg-white px-3 py-1.5 align-top font-medium dark:bg-neutral-950"
-                      >
-                        <Link
-                          href={`/programs/${id}/courses/${course.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="hover:underline"
-                        >
-                          {course.code}
-                        </Link>
-                      </td>
-                    )}
-                    <td className="sticky left-[9rem] z-10 w-64 bg-white px-3 py-1.5 align-top dark:bg-neutral-950">
-                      <div className="font-medium text-neutral-800 dark:text-neutral-200">
-                        {clo.code}
-                      </div>
-                      <div className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-                        {clo.description}
-                      </div>
-                    </td>
-                    {plos.map((plo) => {
-                      const mapping = levelByCloAndPlo.get(`${clo.id}::${plo.id}`);
-                      return (
-                        <td key={plo.id} className="px-3 py-1.5 text-center">
-                          {mapping ? (
-                            <span
-                              className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium ${LEVEL_BADGE_CLASSES[mapping.levelCode]}`}
-                              title={mapping.assessmentMethod ?? undefined}
-                            >
-                              {mapping.levelCode}
-                            </span>
-                          ) : null}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                )),
-              )}
-            </tbody>
-          </table>
+        <div className="max-h-[70vh] overflow-auto rounded-md border border-neutral-200 dark:border-neutral-800">
+          <MappingTable
+            programId={id}
+            cohortId={selectedCohortId ?? ''}
+            courses={courses}
+            plos={plos}
+            mappings={mappings}
+          />
         </div>
       )}
 

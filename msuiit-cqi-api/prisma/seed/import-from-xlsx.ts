@@ -296,10 +296,17 @@ async function main() {
     }
     const displayOrder = Number(cloCode.replace('CLO', '')) || 0;
     const clo = await prisma.clo.upsert({
-      where: { courseId_code: { courseId: course.id, code: cloCode } },
+      where: {
+        courseId_code_cohortId: {
+          courseId: course.id,
+          code: cloCode,
+          cohortId: cohort.id,
+        },
+      },
       update: {},
       create: {
         courseId: course.id,
+        cohortId: cohort.id,
         code: cloCode,
         description: `Placeholder description for ${courseCode} ${cloCode} — update with the actual learning outcome text.`,
         displayOrder,

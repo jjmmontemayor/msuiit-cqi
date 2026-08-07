@@ -138,18 +138,28 @@ model PerformanceIndicator {
   @@map("performance_indicators")
 }
 
+// `cohortId` scopes the CLO itself to one batch, the same way CloPloMapping
+// is cohort-scoped: curricula get revised between batches, and a course's
+// CLOs can be rewritten outright (not just re-mapped) for a later cohort.
+// `isLocked` marks a CLO (and by extension its mappings) as finalized for
+// reporting; a locked CLO can't be edited or deleted in place — instead, a
+// new CLO row is created under the next cohort ("a new version"), leaving
+// the locked one and its historical mappings/attainments untouched.
 model Clo {
-  id           String @id @default(uuid())
-  courseId     String @map("course_id")
+  id           String  @id @default(uuid())
+  courseId     String  @map("course_id")
+  cohortId     String  @map("cohort_id")
   code         String
   description  String
-  displayOrder Int    @default(0) @map("display_order")
+  displayOrder Int     @default(0) @map("display_order")
+  isLocked     Boolean @default(false) @map("is_locked")
 
   course      Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  cohort      Cohort          @relation(fields: [cohortId], references: [id], onDelete: Cascade)
   ploMappings CloPloMapping[]
   attainments CloAttainment[]
 
-  @@unique([courseId, code])
+  @@unique([courseId, code, cohortId])
   @@map("clos")
 }
 
@@ -202,6 +212,7 @@ model Cohort {
   students       Student[]
   evaluations    PiEvaluation[]
   cloPloMappings CloPloMapping[]
+  clos           Clo[]
 
   @@unique([programId, code])
   @@map("cohorts")

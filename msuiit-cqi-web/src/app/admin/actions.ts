@@ -164,14 +164,25 @@ export async function updateCourseDetails(
   revalidatePath(`/admin/programs/${programId}`);
 }
 
+function revalidateCoursePaths(programId: string, courseId: string) {
+  revalidatePath(`/admin/programs/${programId}/courses/${courseId}`);
+  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}/mappings`);
+  revalidatePath(`/programs/${programId}/courses/${courseId}`);
+  revalidatePath(`/programs/${programId}/mappings`);
+}
+
 export async function createClo(
   programId: string,
   courseId: string,
+  cohortId: string,
   formData: FormData,
 ) {
   const description = str(formData, 'description');
 
-  const existing = await apiFetch<Clo[]>(`/clos?courseId=${courseId}`);
+  const existing = await apiFetch<Clo[]>(
+    `/clos?courseId=${courseId}&cohortId=${cohortId}`,
+  );
   const nextNumber =
     1 +
     existing.reduce((max, clo) => {
@@ -184,19 +195,60 @@ export async function createClo(
     method: 'POST',
     body: JSON.stringify({
       courseId,
+      cohortId,
       code,
       description,
       displayOrder: optInt(formData, 'displayOrder') ?? nextNumber,
     }),
   });
 
-  revalidatePath(`/admin/programs/${programId}/courses/${courseId}`);
-  revalidatePath(`/admin/programs/${programId}`);
-  revalidatePath(`/programs/${programId}/mappings`);
+  revalidateCoursePaths(programId, courseId);
 }
 
 export async function deleteClo(programId: string, courseId: string, cloId: string) {
   await apiFetch(`/clos/${cloId}`, { method: 'DELETE' });
-  revalidatePath(`/admin/programs/${programId}/courses/${courseId}`);
-  revalidatePath(`/programs/${programId}/mappings`);
+  revalidateCoursePaths(programId, courseId);
+}
+
+export async function updateCloText(
+  programId: string,
+  courseId: string,
+  cloId: string,
+  description: string,
+) {
+  await apiFetch(`/clos/${cloId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ description }),
+  });
+  revalidateCoursePaths(programId, courseId);
+}
+
+export async function setCloLock(
+  programId: string,
+  courseId: string,
+  cloId: string,
+  isLocked: boolean,
+) {
+  await apiFetch(`/clos/${cloId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ isLocked }),
+  });
+  revalidateCoursePaths(programId, courseId);
+}
+
+export async function duplicateCloToCohort(
+  programId: string,
+  courseId: string,
+  cloId: string,
+  formData: FormData,
+) {
+  const cohortId = str(formData, 'targetCohortId');
+  if (!cohortId) return;
+
+  await apiFetch(`/clos/${cloId}/duplicate`, {
+    method: 'POST',
+    body: JSON.stringify({ cohortId }),
+  });
+
+  revalidateCoursePaths(programId, courseId);
 }

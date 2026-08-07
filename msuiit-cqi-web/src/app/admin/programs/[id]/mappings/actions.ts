@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { apiFetch, type CloPloMapping } from '@/lib/api';
+import { apiFetch, type Clo, type CloPloMapping } from '@/lib/api';
 
 export async function setMapping(
   programId: string,
@@ -34,6 +34,11 @@ export async function setMapping(
   revalidatePath(`/programs/${programId}/mappings`);
 }
 
+// CLOs (and their mappings) are cohort-scoped, so "copying" from another
+// batch means creating this batch's own version of each CLO the source
+// batch has -- via the same duplicateToCohort path used for versioning a
+// single CLO. It's idempotent: a CLO the target cohort already has (same
+// course + code) is left untouched rather than overwritten.
 export async function copyMappingsFromCohort(
   programId: string,
   targetCohortId: string,
@@ -42,31 +47,15 @@ export async function copyMappingsFromCohort(
   const sourceCohortId = String(formData.get('sourceCohortId') ?? '');
   if (!sourceCohortId || sourceCohortId === targetCohortId) return;
 
-  const [sourceMappings, existingTargetMappings] = await Promise.all([
-    apiFetch<CloPloMapping[]>(`/mappings?cohortId=${sourceCohortId}`),
-    apiFetch<CloPloMapping[]>(`/mappings?cohortId=${targetCohortId}`),
-  ]);
-
-  const existingKeys = new Set(
-    existingTargetMappings.map((m) => `${m.cloId}::${m.ploId}`),
-  );
+  const sourceClos = await apiFetch<Clo[]>(`/clos?cohortId=${sourceCohortId}`);
 
   await Promise.all(
-    sourceMappings
-      .filter((m) => !existingKeys.has(`${m.cloId}::${m.ploId}`))
-      .map((m) =>
-        apiFetch('/mappings', {
-          method: 'POST',
-          body: JSON.stringify({
-            cloId: m.cloId,
-            ploId: m.ploId,
-            cohortId: targetCohortId,
-            levelCode: m.levelCode,
-            piId: m.piId ?? undefined,
-            assessmentMethod: m.assessmentMethod ?? undefined,
-          }),
-        }),
-      ),
+    sourceClos.map((clo) =>
+      apiFetch(`/clos/${clo.id}/duplicate`, {
+        method: 'POST',
+        body: JSON.stringify({ cohortId: targetCohortId }),
+      }),
+    ),
   );
 
   revalidatePath(`/admin/programs/${programId}/mappings`);

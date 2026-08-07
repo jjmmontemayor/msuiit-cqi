@@ -32,10 +32,9 @@ export default async function AdminMappingsPage({
   const { cohortId: cohortIdParam } = await searchParams;
   const program = await getProgram(id);
 
-  const [cohorts, plos, courses] = await Promise.all([
+  const [cohorts, plos] = await Promise.all([
     apiFetch<Cohort[]>(`/cohorts?programId=${program.id}`),
     apiFetch<Plo[]>(`/plos?programId=${program.id}`),
-    apiFetch<CourseWithClos[]>(`/courses?programId=${program.id}`),
   ]);
 
   if (cohorts.length === 0) {
@@ -55,9 +54,12 @@ export default async function AdminMappingsPage({
   }
 
   const selectedCohortId = cohortIdParam || cohorts[0].id;
-  const mappings = await apiFetch<CloPloMapping[]>(
-    `/mappings?cohortId=${selectedCohortId}`,
-  );
+  const [courses, mappings] = await Promise.all([
+    apiFetch<CourseWithClos[]>(
+      `/courses?programId=${program.id}&cohortId=${selectedCohortId}`,
+    ),
+    apiFetch<CloPloMapping[]>(`/mappings?cohortId=${selectedCohortId}`),
+  ]);
 
   const levelByCloAndPlo = new Map<string, CloPloMapping>();
   for (const m of mappings) {
@@ -141,7 +143,7 @@ export default async function AdminMappingsPage({
               type="submit"
               className="rounded-md border border-neutral-200 px-3 py-1.5 text-sm hover:border-neutral-400 dark:border-neutral-800 dark:hover:border-neutral-600"
             >
-              Copy unmapped cells
+              Copy missing CLOs &amp; mappings
             </button>
           </form>
         )}
@@ -154,7 +156,7 @@ export default async function AdminMappingsPage({
             : 'No PLOs set up for this program yet — add some above.'}
         </p>
       ) : (
-        <div className="flex-1 overflow-auto rounded-md border border-neutral-200 dark:border-neutral-800">
+        <div className="max-h-[70vh] overflow-auto rounded-md border border-neutral-200 dark:border-neutral-800">
           <table className="min-w-full border-collapse text-sm">
             <thead className="sticky top-0 z-20 bg-neutral-100 dark:bg-neutral-900">
               <tr>

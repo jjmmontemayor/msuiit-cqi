@@ -11,6 +11,7 @@ import {
 import { ClosService } from './clos.service';
 import { CreateCloDto } from './dto/create-clo.dto';
 import { UpdateCloDto } from './dto/update-clo.dto';
+import { DuplicateCloDto } from './dto/duplicate-clo.dto';
 
 @Controller('clos')
 export class ClosController {
@@ -22,8 +23,11 @@ export class ClosController {
   }
 
   @Get()
-  findAll(@Query('courseId') courseId?: string) {
-    return this.closService.findAll(courseId);
+  findAll(
+    @Query('courseId') courseId?: string,
+    @Query('cohortId') cohortId?: string,
+  ) {
+    return this.closService.findAll(courseId, cohortId);
   }
 
   @Get(':id')
@@ -39,5 +43,10 @@ export class ClosController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.closService.remove(id);
+  }
+
+  @Post(':id/duplicate')
+  duplicate(@Param('id') id: string, @Body() dto: DuplicateCloDto) {
+    return this.closService.duplicateToCohort(id, dto);
   }
 }
