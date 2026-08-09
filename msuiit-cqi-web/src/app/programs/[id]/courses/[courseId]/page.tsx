@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { apiFetch, ApiError, type Clo, type Course, type Program } from '@/lib/api';
+import { DownloadAttainmentTemplate } from './download-attainment-template';
 
 export const dynamic = 'force-dynamic';
 
@@ -96,7 +97,12 @@ export default async function CourseDetailsPage({
       </section>
 
       <section>
-        <h2 className="text-lg font-medium">Course Learning Outcomes</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-medium">Course Learning Outcomes</h2>
+          {course.clos.length > 0 && (
+            <DownloadAttainmentTemplate courseCode={course.code} clos={course.clos} />
+          )}
+        </div>
         {course.clos.length === 0 ? (
           <p className="mt-2 text-sm text-neutral-500">No CLOs yet.</p>
         ) : (
