@@ -18,6 +18,7 @@ import { StudentsModule } from './students/students.module';
 import { FacultyModule } from './faculty/faculty.module';
 import { CohortAdvisersModule } from './cohort-advisers/cohort-advisers.module';
 import { AttainmentBenchmarkModule } from './attainment-benchmark/attainment-benchmark.module';
+import { AttainmentUploadsModule } from './attainment-uploads/attainment-uploads.module';
 import { EnrollmentsModule } from './enrollments/enrollments.module';
 import { AttainmentsModule } from './attainments/attainments.module';
 import { EvaluationsModule } from './evaluations/evaluations.module';
@@ -44,6 +45,7 @@ import { AuthModule } from './auth/auth.module';
     FacultyModule,
     CohortAdvisersModule,
     AttainmentBenchmarkModule,
+    AttainmentUploadsModule,
     EnrollmentsModule,
     AttainmentsModule,
     EvaluationsModule,

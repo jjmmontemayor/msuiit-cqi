@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { apiFetch, type Clo, type MappingLevel } from '@/lib/api';
+import { apiFetch, ApiError, type AttainmentUploadResult, type Clo, type MappingLevel } from '@/lib/api';
 
 function str(formData: FormData, key: string): string {
   return String(formData.get(key) ?? '').trim();
@@ -304,4 +304,53 @@ export async function duplicateCloToCohort(
   });
 
   revalidateCoursePaths(programId, courseId);
+}
+
+export type UploadAttainmentSheetState = AttainmentUploadResult | { error: string } | null;
+
+export async function uploadAttainmentSheet(
+  programId: string,
+  courseId: string,
+  _prevState: UploadAttainmentSheetState,
+  formData: FormData,
+): Promise<UploadAttainmentSheetState> {
+  const file = formData.get('file');
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: 'Choose a file to upload.' };
+  }
+
+  const apiForm = new FormData();
+  apiForm.set('file', file);
+  apiForm.set('programId', programId);
+
+  const academicTermId = str(formData, 'academicTermId');
+  if (academicTermId) apiForm.set('academicTermId', academicTermId);
+
+  const newTermSchoolYearStart = str(formData, 'newTermSchoolYearStart');
+  const newTermSchoolYearEnd = str(formData, 'newTermSchoolYearEnd');
+  const newTermSemester = str(formData, 'newTermSemester');
+  const newTermLabel = str(formData, 'newTermLabel');
+  if (newTermSchoolYearStart) apiForm.set('newTermSchoolYearStart', newTermSchoolYearStart);
+  if (newTermSchoolYearEnd) apiForm.set('newTermSchoolYearEnd', newTermSchoolYearEnd);
+  if (newTermSemester) apiForm.set('newTermSemester', newTermSemester);
+  if (newTermLabel) apiForm.set('newTermLabel', newTermLabel);
+
+  const section = str(formData, 'section');
+  if (section) apiForm.set('section', section);
+
+  const yearLevel = str(formData, 'yearLevel');
+  if (yearLevel) apiForm.set('yearLevel', yearLevel);
+
+  try {
+    const result = await apiFetch<AttainmentUploadResult>('/attainment-uploads', {
+      method: 'POST',
+      body: apiForm,
+    });
+    revalidateCoursePaths(programId, courseId);
+    revalidatePath(`/programs/${programId}/clo-attainments`);
+    revalidatePath(`/programs/${programId}/plo-attainments`);
+    return result;
+  } catch (err) {
+    return { error: err instanceof ApiError ? err.message : 'Upload failed.' };
+  }
 }

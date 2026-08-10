@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { apiFetch, ApiError, type Clo, type Cohort, type Course, type CurriculumCourse, type Program } from '@/lib/api';
+import { apiFetch, ApiError, type AcademicTerm, type Clo, type Cohort, type Course, type CurriculumCourse, type Program } from '@/lib/api';
 import {
   createClo,
   deleteClo,
@@ -8,6 +8,7 @@ import {
   setCloLock,
   updateCourseDetails,
 } from '../../../../actions';
+import { AttainmentUploadForm } from './attainment-upload-form';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,11 +43,12 @@ export default async function AdminCourseClosPage({
 }) {
   const { id, courseId } = await params;
   const { cohortId: cohortIdParam } = await searchParams;
-  const [program, course, curriculumCourses, cohorts] = await Promise.all([
+  const [program, course, curriculumCourses, cohorts, academicTerms] = await Promise.all([
     getProgram(id),
     getCourse(courseId),
     apiFetch<CurriculumCourse[]>(`/curriculum-courses?programId=${id}`),
     apiFetch<Cohort[]>(`/cohorts?programId=${id}`),
+    apiFetch<AcademicTerm[]>('/academic-terms'),
   ]);
 
   const otherCourses = curriculumCourses
@@ -167,6 +169,14 @@ export default async function AdminCourseClosPage({
             </button>
           </div>
         </form>
+      </section>
+
+      <section>
+        <AttainmentUploadForm
+          programId={program.id}
+          courseId={course.id}
+          academicTerms={academicTerms}
+        />
       </section>
 
       <section>

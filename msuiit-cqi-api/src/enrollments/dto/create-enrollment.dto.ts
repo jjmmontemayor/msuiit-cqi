@@ -1,4 +1,4 @@
-import { IsUUID } from 'class-validator';
+import { IsInt, IsOptional, IsUUID, Min } from 'class-validator';
 
 export class CreateEnrollmentDto {
   @IsUUID()
@@ -6,4 +6,9 @@ export class CreateEnrollmentDto {
 
   @IsUUID()
   courseOfferingId!: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  yearLevel?: number;
 }

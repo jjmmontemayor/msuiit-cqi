@@ -11,8 +11,7 @@ import { belowBenchmarkClass, buildBatchColorMap } from '@/lib/attainment-displa
 
 export const dynamic = 'force-dynamic';
 
-const studentIdCols = 'sticky left-0 z-10 w-28';
-const studentNameCols = 'sticky left-28 z-10 w-44';
+const studentCols = 'sticky left-0 z-10 w-48';
 
 export default async function PloAttainmentsPage({
   params,
@@ -102,15 +101,16 @@ export default async function PloAttainmentsPage({
       ) : (
         <div className="max-h-[70vh] overflow-auto rounded-md border border-neutral-200 dark:border-neutral-800">
           <table className="min-w-full table-fixed border-collapse text-sm">
+            <colgroup>
+              <col className="w-48" />
+              {plos.map((plo) => (
+                <col key={plo.id} className="w-20" />
+              ))}
+            </colgroup>
             <thead className="sticky top-0 z-20 bg-neutral-100 dark:bg-neutral-900">
               <tr>
-                <th className={`${studentIdCols} z-30 bg-neutral-100 px-3 py-2 text-left dark:bg-neutral-900`}>
-                  Student ID Number
-                </th>
-                <th
-                  className={`${studentNameCols} z-30 border-l border-neutral-200 bg-neutral-100 px-3 py-2 text-left dark:border-neutral-800 dark:bg-neutral-900`}
-                >
-                  Student Name
+                <th className={`${studentCols} z-30 bg-neutral-100 px-3 py-2 text-left dark:bg-neutral-900`}>
+                  Student
                 </th>
                 {plos.map((plo, ploIdx) => (
                   <th
@@ -127,28 +127,22 @@ export default async function PloAttainmentsPage({
             </thead>
             <tbody>
               {students.map((student) => {
-                const rowBg = batchColors.get(student.cohortId)?.row ?? defaultRowBg;
+                const rowBg =
+                  (student.cohortId && batchColors.get(student.cohortId)?.row) ?? defaultRowBg;
                 return (
                   <tr
                     key={student.id}
                     className="border-t border-neutral-200 dark:border-neutral-800"
                   >
-                    <td className={`${studentIdCols} ${rowBg} px-3 py-1.5 font-medium`}>
+                    <td className={`${studentCols} ${rowBg} px-3 py-1.5`}>
                       <Link
                         href={`/programs/${id}/students/${student.id}`}
                         className="hover:underline"
                       >
-                        {student.studentNumber}
-                      </Link>
-                    </td>
-                    <td
-                      className={`${studentNameCols} ${rowBg} border-l border-neutral-200 px-3 py-1.5 dark:border-neutral-800`}
-                    >
-                      <Link
-                        href={`/programs/${id}/students/${student.id}`}
-                        className="hover:underline"
-                      >
-                        {student.lastName}, {student.firstName}
+                        <div className="font-medium">{student.studentNumber}</div>
+                        <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                          {student.lastName}, {student.firstName}
+                        </div>
                       </Link>
                     </td>
                     {plos.map((plo, ploIdx) => {

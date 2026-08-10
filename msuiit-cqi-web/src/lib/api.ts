@@ -10,12 +10,18 @@ export class ApiError extends Error {
 }
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  // A FormData body (file uploads) needs fetch to compute its own
+  // multipart Content-Type with boundary -- forcing application/json here
+  // would make the request unparsable on the server.
+  const isFormData = init?.body instanceof FormData;
   const res = await fetch(`${API_URL}${path}`, {
     ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...init?.headers,
-    },
+    headers: isFormData
+      ? init?.headers
+      : {
+          'Content-Type': 'application/json',
+          ...init?.headers,
+        },
   });
 
   if (!res.ok) {
@@ -190,7 +196,7 @@ export interface Student {
   firstName: string;
   lastName: string;
   programId: string;
-  cohortId: string;
+  cohortId: string | null;
   status: 'ACTIVE' | 'GRADUATED' | 'WITHDRAWN';
 }
 
@@ -202,4 +208,23 @@ export interface PiEvaluation {
   targetPercentage: string | null;
   resultsNarrative: string | null;
   status: 'DRAFT' | 'FINAL';
+}
+
+export interface AcademicTerm {
+  id: string;
+  schoolYearStart: number;
+  schoolYearEnd: number;
+  semester: 'FIRST' | 'SECOND' | 'SUMMER';
+  label: string;
+}
+
+export interface AttainmentUploadResult {
+  coursesMatched: string[];
+  coursesSkipped: string[];
+  studentsCreated: number;
+  studentsExistingInProgram: number;
+  studentsExistingOutOfProgram: number;
+  enrollmentsRecorded: number;
+  attainmentsRecorded: number;
+  attainmentsSkippedNoClo: number;
 }

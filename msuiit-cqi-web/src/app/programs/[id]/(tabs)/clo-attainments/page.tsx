@@ -16,8 +16,7 @@ export const dynamic = 'force-dynamic';
 
 type CourseWithClos = Course & { clos: Clo[] };
 
-const studentIdCols = 'sticky left-0 z-10 w-28';
-const studentNameCols = 'sticky left-28 z-10 w-44';
+const studentCols = 'sticky left-0 z-10 w-48';
 
 export default async function CloAttainmentsPage({
   params,
@@ -112,19 +111,19 @@ export default async function CloAttainmentsPage({
       ) : (
         <div className="max-h-[70vh] overflow-auto rounded-md border border-neutral-200 dark:border-neutral-800">
           <table className="min-w-full table-fixed border-collapse text-sm">
+            <colgroup>
+              <col className="w-48" />
+              {coursesWithClos.map((course) =>
+                course.clos.map((clo) => <col key={clo.id} className="w-16" />),
+              )}
+            </colgroup>
             <thead className="sticky top-0 z-20 bg-neutral-100 dark:bg-neutral-900">
               <tr>
                 <th
                   rowSpan={2}
-                  className={`${studentIdCols} z-30 bg-neutral-100 px-3 py-2 text-left align-bottom dark:bg-neutral-900`}
+                  className={`${studentCols} z-30 bg-neutral-100 px-3 py-2 text-left align-bottom dark:bg-neutral-900`}
                 >
-                  Student ID Number
-                </th>
-                <th
-                  rowSpan={2}
-                  className={`${studentNameCols} z-30 border-l border-neutral-200 bg-neutral-100 px-3 py-2 text-left align-bottom dark:border-neutral-800 dark:bg-neutral-900`}
-                >
-                  Student Name
+                  Student
                 </th>
                 {coursesWithClos.map((course) => (
                   <th
@@ -163,28 +162,22 @@ export default async function CloAttainmentsPage({
             </thead>
             <tbody>
               {students.map((student) => {
-                const rowBg = batchColors.get(student.cohortId)?.row ?? defaultRowBg;
+                const rowBg =
+                  (student.cohortId && batchColors.get(student.cohortId)?.row) ?? defaultRowBg;
                 return (
                   <tr
                     key={student.id}
                     className="border-t border-neutral-200 dark:border-neutral-800"
                   >
-                    <td className={`${studentIdCols} ${rowBg} px-3 py-1.5 font-medium`}>
+                    <td className={`${studentCols} ${rowBg} px-3 py-1.5`}>
                       <Link
                         href={`/programs/${id}/students/${student.id}`}
                         className="hover:underline"
                       >
-                        {student.studentNumber}
-                      </Link>
-                    </td>
-                    <td
-                      className={`${studentNameCols} ${rowBg} border-l border-neutral-200 px-3 py-1.5 dark:border-neutral-800`}
-                    >
-                      <Link
-                        href={`/programs/${id}/students/${student.id}`}
-                        className="hover:underline"
-                      >
-                        {student.lastName}, {student.firstName}
+                        <div className="font-medium">{student.studentNumber}</div>
+                        <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                          {student.lastName}, {student.firstName}
+                        </div>
                       </Link>
                     </td>
                     {coursesWithClos.map((course) =>

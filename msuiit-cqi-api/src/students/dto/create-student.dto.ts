@@ -23,8 +23,9 @@ export class CreateStudentDto {
   @IsUUID()
   programId!: string;
 
+  @IsOptional()
   @IsUUID()
-  cohortId!: string;
+  cohortId?: string;
 
   @IsOptional()
   @IsEnum(StudentStatus)

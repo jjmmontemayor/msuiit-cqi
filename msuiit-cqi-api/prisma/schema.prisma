@@ -285,17 +285,24 @@ enum StudentStatus {
   @@map("student_status")
 }
 
+// `cohortId` is nullable: a student who shows up in an uploaded CLO
+// attainment sheet but isn't part of this program's tracked roster (found
+// no batch to place them in) still gets a Student row so their
+// enrollments/attainments can be recorded against the course, but with no
+// cohort -- which is exactly what excludes them from every cohort-scoped
+// report (CLO/PLO Attainments, weighted PLO rollups, etc.) without needing
+// a separate flag.
 model Student {
   id            String        @id @default(uuid())
   studentNumber String        @unique @map("student_number")
   firstName     String        @map("first_name")
   lastName      String        @map("last_name")
   programId     String        @map("program_id")
-  cohortId      String        @map("cohort_id")
+  cohortId      String?       @map("cohort_id")
   status        StudentStatus @default(ACTIVE)
 
   program     Program      @relation(fields: [programId], references: [id], onDelete: Restrict)
-  cohort      Cohort       @relation(fields: [cohortId], references: [id], onDelete: Restrict)
+  cohort      Cohort?      @relation(fields: [cohortId], references: [id], onDelete: Restrict)
   enrollments Enrollment[]
 
   @@map("students")
@@ -320,6 +327,13 @@ model Enrollment {
   id               String @id @default(uuid())
   studentId        String @map("student_id")
   courseOfferingId String @map("course_offering_id")
+  // What year level the student was in when they took this specific
+  // course -- distinct from the course offering's academic term (a
+  // calendar period), since two students in the same offering can be at
+  // different points in their own program (e.g. one on-track, one
+  // repeating), and the same course can be taken at different year levels
+  // across cohorts as curricula get revised.
+  yearLevel        Int?   @map("year_level")
 
   student        Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
   courseOffering CourseOffering  @relation(fields: [courseOfferingId], references: [id], onDelete: Cascade)
