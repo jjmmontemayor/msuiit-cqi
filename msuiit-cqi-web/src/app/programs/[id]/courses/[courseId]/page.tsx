@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { apiFetch, ApiError, type Clo, type Course, type Program } from '@/lib/api';
+import { apiFetch, ApiError, type AcademicTerm, type Clo, type Course, type Program } from '@/lib/api';
 import { DownloadAttainmentTemplate } from './download-attainment-template';
+import { AttainmentUploadForm } from './attainment-upload-form';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +36,11 @@ export default async function CourseDetailsPage({
   params: Promise<{ id: string; courseId: string }>;
 }) {
   const { id, courseId } = await params;
-  const [program, course] = await Promise.all([getProgram(id), getCourse(courseId)]);
+  const [program, course, academicTerms] = await Promise.all([
+    getProgram(id),
+    getCourse(courseId),
+    apiFetch<AcademicTerm[]>('/academic-terms'),
+  ]);
 
   return (
     <div className="space-y-8">
@@ -117,6 +122,14 @@ export default async function CourseDetailsPage({
             ))}
           </ul>
         )}
+      </section>
+
+      <section>
+        <AttainmentUploadForm
+          programId={program.id}
+          courseId={course.id}
+          academicTerms={academicTerms}
+        />
       </section>
     </div>
   );

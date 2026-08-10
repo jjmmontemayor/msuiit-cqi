@@ -4,7 +4,7 @@ import { useActionState } from 'react';
 import {
   uploadAttainmentSheet,
   type UploadAttainmentSheetState,
-} from '../../../../actions';
+} from '../../../../admin/actions';
 import type { AcademicTerm } from '@/lib/api';
 
 export function AttainmentUploadForm({
@@ -26,10 +26,11 @@ export function AttainmentUploadForm({
     <div>
       <h2 className="text-lg font-medium">Upload CLO Attainment Sheet</h2>
       <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-        Same layout as the source workbook&apos;s CLO_Attainments sheet (ID
-        No. / Student Name, then course columns split into CLO1/CLO2/CLO3).
-        Students not on this program&apos;s roster are still recorded against
-        the course, but won&apos;t appear in any batch-scoped report.
+        For the faculty teaching this course this semester. Same layout as
+        the source workbook&apos;s CLO_Attainments sheet (ID No. / Student
+        Name, then course columns split into CLO1/CLO2/CLO3). Students not
+        on this program&apos;s roster are still recorded against the
+        course, but won&apos;t appear in any batch-scoped report.
       </p>
 
       <form
