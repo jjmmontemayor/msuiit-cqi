@@ -66,6 +66,47 @@ export class ReportsService {
     );
   }
 
+  // Flat student x course x CLO x score rows for the "CLO Attainments" matrix
+  // view -- deliberately keyed by clo_code (not clo_id) since CLOs are
+  // cohort-versioned: the same CLO "slot" in a course can be a different row
+  // per batch, and the matrix needs to line student scores up in the same
+  // column regardless of which cohort's CLO row they were recorded against.
+  cloAttainmentMatrix(params: { programId?: string; cohortId?: string }) {
+    const conditions: Prisma.Sql[] = [];
+    if (params.programId) {
+      conditions.push(Prisma.sql`s.program_id = ${params.programId}`);
+    }
+    if (params.cohortId) {
+      conditions.push(Prisma.sql`s.cohort_id = ${params.cohortId}`);
+    }
+    const where =
+      conditions.length > 0
+        ? Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}`
+        : Prisma.empty;
+
+    return this.prisma.$queryRaw(
+      Prisma.sql`
+        SELECT
+            s.id             AS student_id,
+            s.student_number AS student_number,
+            s.first_name     AS first_name,
+            s.last_name      AS last_name,
+            s.cohort_id      AS cohort_id,
+            c.id             AS course_id,
+            clo.code         AS clo_code,
+            ca.score         AS score
+        FROM clo_attainments ca
+        JOIN clos clo             ON clo.id = ca.clo_id
+        JOIN enrollments e        ON e.id = ca.enrollment_id
+        JOIN students s           ON s.id = e.student_id
+        JOIN course_offerings co  ON co.id = e.course_offering_id
+        JOIN courses c            ON c.id = co.course_id
+        ${where}
+        ORDER BY s.student_number
+      `,
+    );
+  }
+
   programPloPerformance(params: { programId?: string; cohortId?: string }) {
     const conditions: Prisma.Sql[] = [];
     if (params.programId) {

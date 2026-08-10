@@ -28,6 +28,14 @@ export class ReportsController {
     return this.reportsService.cloAttainmentByStudent(studentId);
   }
 
+  @Get('clo-attainment-matrix')
+  cloAttainmentMatrix(
+    @Query('programId') programId?: string,
+    @Query('cohortId') cohortId?: string,
+  ) {
+    return this.reportsService.cloAttainmentMatrix({ programId, cohortId });
+  }
+
   @Get('program-plo-performance')
   programPloPerformance(
     @Query('programId') programId?: string,

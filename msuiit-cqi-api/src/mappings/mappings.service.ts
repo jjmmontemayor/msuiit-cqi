@@ -24,14 +24,14 @@ export class MappingsService {
         cohortId: params.cohortId,
         clo: params.courseId ? { courseId: params.courseId } : undefined,
       },
-      include: { level: true, pi: true },
+      include: { pi: true },
     });
   }
 
   async findOne(id: string) {
     const mapping = await this.prisma.cloPloMapping.findUnique({
       where: { id },
-      include: { level: true, pi: true },
+      include: { pi: true },
     });
     if (!mapping) {
       throw new NotFoundException(`Mapping ${id} not found`);

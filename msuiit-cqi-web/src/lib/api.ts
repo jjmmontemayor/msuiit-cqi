@@ -87,6 +87,14 @@ export interface PerformanceIndicator {
   displayOrder: number;
 }
 
+export interface MappingLevel {
+  id: string;
+  programId: string;
+  code: 'I' | 'P' | 'D';
+  label: string;
+  weight: number;
+}
+
 export interface Cohort {
   id: string;
   programId: string;
@@ -94,6 +102,27 @@ export interface Cohort {
   startYear: number;
   endYear: number;
   description: string | null;
+}
+
+export interface Faculty {
+  id: string;
+  programId: string;
+  name: string;
+  email: string | null;
+  isActive: boolean;
+}
+
+export interface CohortAdviser {
+  id: string;
+  cohortId: string;
+  facultyId: string;
+  faculty: Faculty;
+}
+
+export interface AttainmentBenchmark {
+  id: string;
+  programId: string;
+  percentage: number;
 }
 
 export interface CloPloMapping {
@@ -131,6 +160,26 @@ export interface CloAttainmentByStudentRow {
   course_id: string;
   course_code: string;
   clo_id: string;
+  clo_code: string;
+  score: string;
+}
+
+export interface CloAttainmentByCourseRow {
+  course_id: string;
+  course_code: string;
+  clo_id: string;
+  clo_code: string;
+  avg_score: string;
+  attainment_count: string;
+}
+
+export interface CloAttainmentMatrixRow {
+  student_id: string;
+  student_number: string;
+  first_name: string;
+  last_name: string;
+  cohort_id: string;
+  course_id: string;
   clo_code: string;
   score: string;
 }

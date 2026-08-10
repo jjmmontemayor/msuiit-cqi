@@ -22,11 +22,14 @@ model Program {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  curriculumCourses CurriculumCourse[]
-  plos              Plo[]
-  cohorts           Cohort[]
-  students          Student[]
-  userRoles         UserProgramRole[]
+  curriculumCourses    CurriculumCourse[]
+  plos                 Plo[]
+  cohorts              Cohort[]
+  students             Student[]
+  userRoles            UserProgramRole[]
+  mappingLevels        MappingLevel[]
+  attainmentBenchmark  AttainmentBenchmark?
+  faculty              Faculty[]
 
   @@map("programs")
 }
@@ -56,14 +59,37 @@ enum MappingLevelCode {
   D
 }
 
+// Weights are program-specific (each program can tune how I/P/D translate
+// into a weighted score), so this is one row per (program, code) rather
+// than a single global row per code. Not directly related to CloPloMapping
+// at the Prisma level -- CloPloMapping.levelCode is a bare enum, and the
+// applicable weight is looked up by (the mapping's cohort's program, code)
+// in the reporting views and the admin weight-computation table.
 model MappingLevel {
-  code   MappingLevelCode @id
-  label  String
-  weight Int
+  id        String           @id @default(uuid())
+  programId String           @map("program_id")
+  code      MappingLevelCode
+  label     String
+  weight    Int
 
-  cloPloMappings CloPloMapping[]
+  program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
 
+  @@unique([programId, code])
   @@map("mapping_levels")
+}
+
+// One row per program: the score threshold below which a student's CLO
+// attainment is flagged in reports -- source workbook calls this the
+// "Performance Criteria" (Benchmark/Target, both 70% there) and uses it to
+// decide "Good Standing" per student and the ✅/❌ "CQI Alert" per course.
+model AttainmentBenchmark {
+  id         String @id @default(uuid())
+  programId  String @unique @map("program_id")
+  percentage Int    @default(70)
+
+  program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@map("attainment_benchmarks")
 }
 
 enum Semester {
@@ -190,7 +216,6 @@ model CloPloMapping {
   plo    Plo                   @relation(fields: [ploId], references: [id], onDelete: Cascade)
   cohort Cohort                @relation(fields: [cohortId], references: [id], onDelete: Cascade)
   pi     PerformanceIndicator? @relation(fields: [piId], references: [id], onDelete: SetNull)
-  level  MappingLevel          @relation(fields: [levelCode], references: [code])
 
   @@unique([cloId, ploId, cohortId])
   @@map("clo_plo_mappings")
@@ -208,14 +233,48 @@ model Cohort {
   endYear     Int     @map("end_year")
   description String?
 
-  program        Program         @relation(fields: [programId], references: [id], onDelete: Cascade)
-  students       Student[]
-  evaluations    PiEvaluation[]
-  cloPloMappings CloPloMapping[]
-  clos           Clo[]
+  program         Program          @relation(fields: [programId], references: [id], onDelete: Cascade)
+  students        Student[]
+  evaluations     PiEvaluation[]
+  cloPloMappings  CloPloMapping[]
+  clos            Clo[]
+  cohortAdvisers  CohortAdviser[]
 
   @@unique([programId, code])
   @@map("cohorts")
+}
+
+// Per-program faculty roster. Not tied to a User/login account (this app
+// doesn't have auth-gated faculty accounts yet) -- a lightweight roster so a
+// faculty member can be assigned as an adviser to one of the program's
+// batches.
+model Faculty {
+  id        String  @id @default(uuid())
+  programId String  @map("program_id")
+  name      String
+  email     String?
+  isActive  Boolean @default(true) @map("is_active")
+
+  program        Program         @relation(fields: [programId], references: [id], onDelete: Cascade)
+  cohortAdvisers CohortAdviser[]
+
+  @@map("faculty")
+}
+
+// Faculty <-> Cohort adviser assignment. A batch can have more than one
+// adviser (e.g. co-advisers, or a handoff mid-batch), and a faculty member
+// can advise more than one batch at a time, hence a plain join table rather
+// than a single adviserId column on Cohort or Student.
+model CohortAdviser {
+  id        String @id @default(uuid())
+  cohortId  String @map("cohort_id")
+  facultyId String @map("faculty_id")
+
+  cohort  Cohort  @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  faculty Faculty @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+
+  @@unique([cohortId, facultyId])
+  @@map("cohort_advisers")
 }
 
 enum StudentStatus {

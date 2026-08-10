@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { apiFetch, ApiError, type Clo, type Cohort, type CloPloMapping, type Course, type Plo, type Program } from '@/lib/api';
+import { apiFetch, ApiError, type Clo, type Cohort, type CloPloMapping, type Course, type MappingLevel, type Plo, type Program } from '@/lib/api';
 import { MappingCell } from './mapping-cell';
 import { copyMappingsFromCohort } from './actions';
 import { buildPloSummary } from '@/lib/mapping-summary';
 import { MappingSummaryTable } from '@/components/mapping-summary-table';
+import { WeightComputationTable } from '@/components/weight-computation-table';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,10 +33,15 @@ export default async function AdminMappingsPage({
   const { cohortId: cohortIdParam } = await searchParams;
   const program = await getProgram(id);
 
-  const [cohorts, plos] = await Promise.all([
+  const [cohorts, plos, mappingLevels] = await Promise.all([
     apiFetch<Cohort[]>(`/cohorts?programId=${program.id}`),
     apiFetch<Plo[]>(`/plos?programId=${program.id}`),
+    apiFetch<MappingLevel[]>(`/mapping-levels?programId=${program.id}`),
   ]);
+  const weights = Object.fromEntries(mappingLevels.map((l) => [l.code, l.weight])) as Record<
+    'I' | 'P' | 'D',
+    number
+  >;
 
   if (cohorts.length === 0) {
     return (
@@ -234,6 +240,38 @@ export default async function AdminMappingsPage({
           </p>
           <div className="mt-3">
             <MappingSummaryTable rows={summaryRows} />
+          </div>
+        </div>
+      )}
+
+      {plos.length > 0 && (
+        <div>
+          <div className="flex items-center gap-1.5">
+            <h2 className="text-lg font-medium">CLO-PLO Weight Computation</h2>
+            <Link
+              href={`/admin/programs/${program.id}`}
+              title="Edit weights"
+              aria-label="Edit weights"
+              className="rounded-md p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="h-4 w-4"
+                aria-hidden="true"
+              >
+                <path d="M13.586 3.586a2 2 0 1 1 2.828 2.828l-.793.793-2.828-2.828.793-.793ZM11.379 5.793 3 14.172V17h2.828l8.38-8.379-2.83-2.828Z" />
+              </svg>
+            </Link>
+          </div>
+          <p className="mt-1 text-sm text-neutral-500">
+            Current weights: I = {weights.I}, P = {weights.P}, D = {weights.D}
+            . Same weights used to compute PLO attainment. Click a row to see
+            the subtotal per course.
+          </p>
+          <div className="mt-3">
+            <WeightComputationTable rows={summaryRows} weights={weights} />
           </div>
         </div>
       )}

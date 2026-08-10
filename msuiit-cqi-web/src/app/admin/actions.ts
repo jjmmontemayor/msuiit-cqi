@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { apiFetch, type Clo } from '@/lib/api';
+import { apiFetch, type Clo, type MappingLevel } from '@/lib/api';
 
 function str(formData: FormData, key: string): string {
   return String(formData.get(key) ?? '').trim();
@@ -13,6 +13,36 @@ function optInt(formData: FormData, key: string): number | undefined {
   if (raw == null || raw === '') return undefined;
   const n = Number(raw);
   return Number.isFinite(n) ? n : undefined;
+}
+
+export async function updateMappingLevelWeights(programId: string, formData: FormData) {
+  const levels = await apiFetch<MappingLevel[]>(`/mapping-levels?programId=${programId}`);
+  await Promise.all(
+    levels.map((level) => {
+      const weight = optInt(formData, `weight_${level.code}`);
+      if (weight == null) return Promise.resolve();
+      return apiFetch(`/mapping-levels/${level.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ weight }),
+      });
+    }),
+  );
+
+  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/programs/${programId}`, 'layout');
+}
+
+export async function updateAttainmentBenchmark(programId: string, formData: FormData) {
+  const percentage = optInt(formData, 'percentage');
+  if (percentage == null) return;
+
+  await apiFetch(`/attainment-benchmark?programId=${programId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ percentage }),
+  });
+
+  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/programs/${programId}`, 'layout');
 }
 
 export async function createProgram(formData: FormData) {
@@ -59,6 +89,29 @@ export async function deleteCohort(programId: string, cohortId: string) {
   await apiFetch(`/cohorts/${cohortId}`, { method: 'DELETE' });
   revalidatePath(`/admin/programs/${programId}`);
   revalidatePath(`/programs/${programId}`);
+}
+
+export async function addCohortAdviser(
+  programId: string,
+  cohortId: string,
+  formData: FormData,
+) {
+  const facultyId = str(formData, 'facultyId');
+  if (!facultyId) return;
+
+  await apiFetch('/cohort-advisers', {
+    method: 'POST',
+    body: JSON.stringify({ cohortId, facultyId }),
+  });
+
+  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/programs/${programId}/clo-attainments`);
+}
+
+export async function removeCohortAdviser(programId: string, cohortAdviserId: string) {
+  await apiFetch(`/cohort-advisers/${cohortAdviserId}`, { method: 'DELETE' });
+  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/programs/${programId}/clo-attainments`);
 }
 
 export async function createPlo(programId: string, formData: FormData) {

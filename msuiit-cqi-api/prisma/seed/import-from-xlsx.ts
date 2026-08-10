@@ -100,6 +100,27 @@ async function main() {
     create: { code: 'BSCS', name: 'Bachelor of Science in Computer Science' },
   });
 
+  // Mapping level weights and the attainment benchmark are per-program
+  // settings (see ProgramsService.create, which seeds these for programs
+  // created through the API) -- this script bypasses that service, so it
+  // seeds the same defaults directly.
+  for (const level of [
+    { code: MappingLevelCode.I, label: 'Introduced', weight: 1 },
+    { code: MappingLevelCode.P, label: 'Practiced', weight: 2 },
+    { code: MappingLevelCode.D, label: 'Demonstrated', weight: 3 },
+  ] as const) {
+    await prisma.mappingLevel.upsert({
+      where: { programId_code: { programId: program.id, code: level.code } },
+      update: {},
+      create: { programId: program.id, ...level },
+    });
+  }
+  await prisma.attainmentBenchmark.upsert({
+    where: { programId: program.id },
+    update: {},
+    create: { programId: program.id, percentage: 70 },
+  });
+
   const cohort = await prisma.cohort.upsert({
     where: { programId_code: { programId: program.id, code: '2022-2025' } },
     update: {},

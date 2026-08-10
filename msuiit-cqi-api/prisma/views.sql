@@ -67,7 +67,7 @@ JOIN course_offerings co    ON co.id = e.course_offering_id
 JOIN courses c               ON c.id = co.course_id
 JOIN clo_plo_mappings cpm    ON cpm.clo_id = clo.id AND cpm.cohort_id = s.cohort_id
 JOIN plos plo                 ON plo.id = cpm.plo_id
-JOIN mapping_levels ml        ON ml.code = cpm.level_code
+JOIN mapping_levels ml        ON ml.code = cpm.level_code AND ml.program_id = coh.program_id
 GROUP BY c.id, c.code, plo.id, plo.code, coh.id, coh.code;
 
 -- Weighted rollup of a student's CLO scores (across all their enrollments)
@@ -88,7 +88,7 @@ JOIN enrollments e             ON e.id = ca.enrollment_id
 JOIN students s                 ON s.id = e.student_id
 JOIN clo_plo_mappings cpm       ON cpm.clo_id = ca.clo_id AND cpm.cohort_id = s.cohort_id
 JOIN plos plo                    ON plo.id = cpm.plo_id
-JOIN mapping_levels ml           ON ml.code = cpm.level_code
+JOIN mapping_levels ml           ON ml.code = cpm.level_code AND ml.program_id = s.program_id
 GROUP BY s.id, s.student_number, plo.id, plo.code, s.cohort_id;
 
 -- Program-wide average per PLO across all courses, equivalent to the

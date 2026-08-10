@@ -3,20 +3,28 @@ import { notFound } from 'next/navigation';
 import {
   apiFetch,
   ApiError,
+  type AttainmentBenchmark,
   type Cohort,
+  type CohortAdviser,
   type Course,
   type CurriculumCourse,
+  type Faculty,
+  type MappingLevel,
   type Plo,
   type Program,
 } from '@/lib/api';
 import {
+  addCohortAdviser,
   createAndLinkCourse,
   createCohort,
   createPlo,
   deleteCohort,
   deletePlo,
   linkExistingCourse,
+  removeCohortAdviser,
   unlinkCourse,
+  updateAttainmentBenchmark,
+  updateMappingLevelWeights,
 } from '../../actions';
 
 export const dynamic = 'force-dynamic';
@@ -40,15 +48,36 @@ export default async function AdminProgramPage({
   const { id } = await params;
   const program = await getProgram(id);
 
-  const [cohorts, plos, curriculumCourses, allCourses] = await Promise.all([
+  const [
+    cohorts,
+    plos,
+    curriculumCourses,
+    allCourses,
+    faculty,
+    cohortAdvisers,
+    mappingLevels,
+    benchmark,
+  ] = await Promise.all([
     apiFetch<Cohort[]>(`/cohorts?programId=${program.id}`),
     apiFetch<Plo[]>(`/plos?programId=${program.id}`),
     apiFetch<CurriculumCourse[]>(`/curriculum-courses?programId=${program.id}`),
     apiFetch<Course[]>('/courses'),
+    apiFetch<Faculty[]>(`/faculty?programId=${program.id}`),
+    apiFetch<CohortAdviser[]>('/cohort-advisers'),
+    apiFetch<MappingLevel[]>(`/mapping-levels?programId=${program.id}`),
+    apiFetch<AttainmentBenchmark>(`/attainment-benchmark?programId=${program.id}`),
   ]);
 
   const linkedCourseIds = new Set(curriculumCourses.map((cc) => cc.courseId));
   const availableCourses = allCourses.filter((c) => !linkedCourseIds.has(c.id));
+
+  const advisersByCohort = new Map<string, CohortAdviser[]>();
+  for (const ca of cohortAdvisers) {
+    const list = advisersByCohort.get(ca.cohortId) ?? [];
+    list.push(ca);
+    advisersByCohort.set(ca.cohortId, list);
+  }
+  const activeFaculty = faculty.filter((f) => f.isActive);
 
   const boundCreateCohort = createCohort.bind(null, program.id);
   const boundCreatePlo = createPlo.bind(null, program.id);
@@ -93,7 +122,15 @@ export default async function AdminProgramPage({
       </div>
 
       <section>
-        <h2 className="text-lg font-medium">Batches</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-medium">Batches</h2>
+          <Link
+            href={`/admin/programs/${program.id}/faculty`}
+            className="text-sm text-neutral-500 hover:underline"
+          >
+            Manage Faculty &rarr;
+          </Link>
+        </div>
         <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
           Each batch keeps its own CLO-PLO mapping, since curricula get revised
           between cohorts.
@@ -102,26 +139,84 @@ export default async function AdminProgramPage({
           <p className="mt-2 text-sm text-neutral-500">No batches yet.</p>
         ) : (
           <ul className="mt-3 divide-y divide-neutral-200 rounded-md border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
-            {cohorts.map((cohort) => (
-              <li key={cohort.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
-                <div className="text-sm">
-                  <span className="font-medium">{cohort.code}</span>
-                  {cohort.description && (
-                    <span className="ml-2 text-neutral-600 dark:text-neutral-400">
-                      {cohort.description}
-                    </span>
-                  )}
-                </div>
-                <form action={deleteCohort.bind(null, program.id, cohort.id)}>
-                  <button
-                    type="submit"
-                    className="shrink-0 text-sm text-red-600 hover:underline dark:text-red-400"
-                  >
-                    Delete
-                  </button>
-                </form>
-              </li>
-            ))}
+            {cohorts.map((cohort) => {
+              const advisers = advisersByCohort.get(cohort.id) ?? [];
+              const assignedFacultyIds = new Set(advisers.map((a) => a.facultyId));
+              const availableFaculty = activeFaculty.filter(
+                (f) => !assignedFacultyIds.has(f.id),
+              );
+              return (
+                <li key={cohort.id} className="px-4 py-2.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-sm">
+                      <span className="font-medium">{cohort.code}</span>
+                      {cohort.description && (
+                        <span className="ml-2 text-neutral-600 dark:text-neutral-400">
+                          {cohort.description}
+                        </span>
+                      )}
+                    </div>
+                    <form action={deleteCohort.bind(null, program.id, cohort.id)}>
+                      <button
+                        type="submit"
+                        className="shrink-0 text-sm text-red-600 hover:underline dark:text-red-400"
+                      >
+                        Delete
+                      </button>
+                    </form>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-neutral-500">Advisers:</span>
+                    {advisers.length === 0 ? (
+                      <span className="text-xs text-neutral-400">None assigned</span>
+                    ) : (
+                      advisers.map((ca) => (
+                        <span
+                          key={ca.id}
+                          className="inline-flex items-center gap-1 rounded-full border border-neutral-200 px-2 py-0.5 text-xs dark:border-neutral-700"
+                        >
+                          {ca.faculty.name}
+                          <form action={removeCohortAdviser.bind(null, program.id, ca.id)}>
+                            <button
+                              type="submit"
+                              title="Remove adviser"
+                              aria-label="Remove adviser"
+                              className="text-neutral-400 hover:text-red-600 dark:hover:text-red-400"
+                            >
+                              &times;
+                            </button>
+                          </form>
+                        </span>
+                      ))
+                    )}
+                    {availableFaculty.length > 0 && (
+                      <form
+                        action={addCohortAdviser.bind(null, program.id, cohort.id)}
+                        className="flex items-center gap-1"
+                      >
+                        <select
+                          name="facultyId"
+                          defaultValue=""
+                          className="rounded border border-neutral-300 px-1.5 py-0.5 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+                        >
+                          <option value="" disabled>
+                            Add adviser&hellip;
+                          </option>
+                          {availableFaculty.map((f) => (
+                            <option key={f.id} value={f.id}>
+                              {f.name}
+                            </option>
+                          ))}
+                        </select>
+                        <button type="submit" className="text-xs underline">
+                          Add
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
 
@@ -174,6 +269,70 @@ export default async function AdminProgramPage({
               Add Batch
             </button>
           </div>
+        </form>
+      </section>
+
+      <section className="rounded-md border border-neutral-200 p-4 dark:border-neutral-800">
+        <h2 className="text-lg font-medium">Mapping Level Weights</h2>
+        <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+          Used to compute weighted PLO/CLO attainment from I/P/D mapping levels
+          — changing these affects every attainment report and the CLO-PLO
+          weight computation table immediately.
+        </p>
+        <form
+          action={updateMappingLevelWeights.bind(null, program.id)}
+          className="mt-3 flex flex-wrap items-end gap-4"
+        >
+          {mappingLevels.map((level) => (
+            <label key={level.code} className="text-sm">
+              {level.label} ({level.code})
+              <input
+                name={`weight_${level.code}`}
+                type="number"
+                min={1}
+                required
+                defaultValue={level.weight}
+                className="mt-1 block w-24 rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+              />
+            </label>
+          ))}
+          <button
+            type="submit"
+            className="rounded-md bg-neutral-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"
+          >
+            Save Weights
+          </button>
+        </form>
+      </section>
+
+      <section className="rounded-md border border-neutral-200 p-4 dark:border-neutral-800">
+        <h2 className="text-lg font-medium">Attainment Benchmark</h2>
+        <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+          Score threshold below which a student&apos;s CLO attainment is
+          flagged in the CLO Attainments table.
+        </p>
+        <form
+          action={updateAttainmentBenchmark.bind(null, program.id)}
+          className="mt-3 flex flex-wrap items-end gap-4"
+        >
+          <label className="text-sm">
+            Benchmark %
+            <input
+              name="percentage"
+              type="number"
+              min={1}
+              max={100}
+              required
+              defaultValue={benchmark.percentage}
+              className="mt-1 block w-24 rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            />
+          </label>
+          <button
+            type="submit"
+            className="rounded-md bg-neutral-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"
+          >
+            Save Benchmark
+          </button>
         </form>
       </section>
 
