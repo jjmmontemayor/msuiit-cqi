@@ -82,33 +82,29 @@ export class AttainmentUploadsService {
     const studentDataRows = rows.slice(5).filter((row) => row[0] != null);
 
     return this.prisma.$transaction(async (tx) => {
-      // Resolve or create the academic term for this upload.
+      // Resolve the academic term for this upload -- a lookup against
+      // terms an admin has already set up, never a create. The faculty
+      // uploading only picks a semester + academic year.
       let academicTermId = dto.academicTermId;
-      if (dto.newTermSchoolYearStart != null && dto.newTermSchoolYearEnd != null && dto.newTermSemester) {
-        const term = await tx.academicTerm.upsert({
+      if (!academicTermId && dto.schoolYearStart != null && dto.schoolYearEnd != null && dto.semester) {
+        const term = await tx.academicTerm.findUnique({
           where: {
             schoolYearStart_schoolYearEnd_semester: {
-              schoolYearStart: dto.newTermSchoolYearStart,
-              schoolYearEnd: dto.newTermSchoolYearEnd,
-              semester: dto.newTermSemester,
+              schoolYearStart: dto.schoolYearStart,
+              schoolYearEnd: dto.schoolYearEnd,
+              semester: dto.semester,
             },
           },
-          update: {},
-          create: {
-            schoolYearStart: dto.newTermSchoolYearStart,
-            schoolYearEnd: dto.newTermSchoolYearEnd,
-            semester: dto.newTermSemester,
-            label:
-              dto.newTermLabel ||
-              `${dto.newTermSchoolYearStart}-${dto.newTermSchoolYearEnd} ${dto.newTermSemester}`,
-          },
         });
+        if (!term) {
+          throw new BadRequestException(
+            `No academic term found for ${dto.schoolYearStart}-${dto.schoolYearEnd} ${dto.semester} — ask an admin to add it first.`,
+          );
+        }
         academicTermId = term.id;
       }
       if (!academicTermId) {
-        throw new BadRequestException(
-          'Select an existing academic term or provide the fields to create a new one.',
-        );
+        throw new BadRequestException('Select an academic year and semester.');
       }
       const section = dto.section || 'Upload';
 
@@ -210,11 +206,10 @@ export class AttainmentUploadsService {
                 courseOfferingId: offering.id,
               },
             },
-            update: dto.yearLevel != null ? { yearLevel: dto.yearLevel } : {},
+            update: {},
             create: {
               studentId: student.id,
               courseOfferingId: offering.id,
-              yearLevel: dto.yearLevel,
             },
           });
           enrollmentsRecorded += 1;

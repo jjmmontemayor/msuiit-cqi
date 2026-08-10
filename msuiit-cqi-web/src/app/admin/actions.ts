@@ -323,23 +323,16 @@ export async function uploadAttainmentSheet(
   apiForm.set('file', file);
   apiForm.set('programId', programId);
 
-  const academicTermId = str(formData, 'academicTermId');
-  if (academicTermId) apiForm.set('academicTermId', academicTermId);
+  const schoolYear = str(formData, 'schoolYear');
+  const [schoolYearStart, schoolYearEnd] = schoolYear.split('-');
+  if (schoolYearStart) apiForm.set('schoolYearStart', schoolYearStart);
+  if (schoolYearEnd) apiForm.set('schoolYearEnd', schoolYearEnd);
 
-  const newTermSchoolYearStart = str(formData, 'newTermSchoolYearStart');
-  const newTermSchoolYearEnd = str(formData, 'newTermSchoolYearEnd');
-  const newTermSemester = str(formData, 'newTermSemester');
-  const newTermLabel = str(formData, 'newTermLabel');
-  if (newTermSchoolYearStart) apiForm.set('newTermSchoolYearStart', newTermSchoolYearStart);
-  if (newTermSchoolYearEnd) apiForm.set('newTermSchoolYearEnd', newTermSchoolYearEnd);
-  if (newTermSemester) apiForm.set('newTermSemester', newTermSemester);
-  if (newTermLabel) apiForm.set('newTermLabel', newTermLabel);
+  const semester = str(formData, 'semester');
+  if (semester) apiForm.set('semester', semester);
 
   const section = str(formData, 'section');
   if (section) apiForm.set('section', section);
-
-  const yearLevel = str(formData, 'yearLevel');
-  if (yearLevel) apiForm.set('yearLevel', yearLevel);
 
   try {
     const result = await apiFetch<AttainmentUploadResult>('/attainment-uploads', {

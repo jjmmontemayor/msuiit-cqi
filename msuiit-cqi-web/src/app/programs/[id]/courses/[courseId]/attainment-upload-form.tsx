@@ -22,6 +22,15 @@ export function AttainmentUploadForm({
     null,
   );
 
+  const academicYears = [
+    ...new Map(
+      academicTerms.map((t) => [
+        `${t.schoolYearStart}-${t.schoolYearEnd}`,
+        { start: t.schoolYearStart, end: t.schoolYearEnd },
+      ]),
+    ).values(),
+  ].sort((a, b) => b.start - a.start);
+
   return (
     <div>
       <h2 className="text-lg font-medium">Upload CLO Attainment Sheet</h2>
@@ -49,87 +58,62 @@ export function AttainmentUploadForm({
         </label>
 
         <label className="text-sm sm:col-span-2">
-          Use existing term
+          Academic year
           <select
-            name="academicTermId"
+            name="schoolYear"
+            required
             defaultValue=""
             className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
           >
-            <option value="">None &mdash; create new term below</option>
-            {academicTerms.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.label}
+            <option value="" disabled>
+              Select&hellip;
+            </option>
+            {academicYears.map((y) => (
+              <option key={`${y.start}-${y.end}`} value={`${y.start}-${y.end}`}>
+                {y.start}-{y.end}
               </option>
             ))}
           </select>
         </label>
-        <label className="text-sm">
-          Section
+        <label className="text-sm sm:col-span-2">
+          Semester
+          <select
+            name="semester"
+            required
+            defaultValue=""
+            className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+          >
+            <option value="" disabled>
+              Select&hellip;
+            </option>
+            <option value="FIRST">First</option>
+            <option value="SECOND">Second</option>
+            <option value="SUMMER">Summer</option>
+          </select>
+        </label>
+        <label className="text-sm sm:col-span-4">
+          Section (optional)
           <input
             name="section"
             placeholder="Upload"
             className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
           />
         </label>
-        <label className="text-sm">
-          Year level
-          <input
-            name="yearLevel"
-            type="number"
-            min={1}
-            max={10}
-            placeholder="3"
-            className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-          />
-        </label>
 
-        <p className="text-xs text-neutral-500 sm:col-span-4">
-          Or create a new term (ignored if an existing term is selected above):
-        </p>
-        <label className="text-sm">
-          School year start
-          <input
-            name="newTermSchoolYearStart"
-            type="number"
-            placeholder="2025"
-            className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-          />
-        </label>
-        <label className="text-sm">
-          School year end
-          <input
-            name="newTermSchoolYearEnd"
-            type="number"
-            placeholder="2026"
-            className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-          />
-        </label>
-        <label className="text-sm">
-          Semester
-          <select
-            name="newTermSemester"
-            defaultValue=""
-            className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-          >
-            <option value="">&mdash;</option>
-            <option value="FIRST">First</option>
-            <option value="SECOND">Second</option>
-            <option value="SUMMER">Summer</option>
-          </select>
-        </label>
-        <label className="text-sm">
-          Term label
-          <input
-            name="newTermLabel"
-            placeholder="AY2025-2026 1st Sem"
-            className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-          />
-        </label>
+        {academicYears.length === 0 && (
+          <p className="text-xs text-amber-600 dark:text-amber-400 sm:col-span-4">
+            No academic terms set up yet — ask an admin to{' '}
+            <a href="/admin/academic-terms" className="underline">
+              add one
+            </a>{' '}
+            before uploading.
+          </p>
+        )}
 
         <div className="sm:col-span-4">
           <button
             type="submit"
-            disabled={pending}
+            disabled={pending || academicYears.length === 0}
             className="rounded-md bg-neutral-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"
           >
             {pending ? 'Uploading…' : 'Upload'}

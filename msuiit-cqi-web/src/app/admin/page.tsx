@@ -21,7 +21,15 @@ export default async function AdminPage() {
       </div>
 
       <section>
-        <h2 className="text-lg font-medium">Programs</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-medium">Programs</h2>
+          <Link
+            href="/admin/academic-terms"
+            className="text-sm text-neutral-500 hover:underline"
+          >
+            Manage Academic Terms &rarr;
+          </Link>
+        </div>
         {programs.length === 0 ? (
           <p className="mt-2 text-sm text-neutral-500">No programs yet.</p>
         ) : (
