@@ -1,10 +1,13 @@
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import {
   apiFetch,
+  ApiError,
   type AttainmentBenchmark,
   type Cohort,
   type Plo,
   type PloAttainmentByStudentRow,
+  type Program,
   type Student,
 } from '@/lib/api';
 import { belowBenchmarkClass, buildBatchColorMap } from '@/lib/attainment-display';
@@ -12,6 +15,17 @@ import { belowBenchmarkClass, buildBatchColorMap } from '@/lib/attainment-displa
 export const dynamic = 'force-dynamic';
 
 const studentCols = 'sticky left-0 z-10 w-48';
+
+async function getProgram(id: string): Promise<Program> {
+  try {
+    return await apiFetch<Program>(`/programs/${id}`);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) {
+      notFound();
+    }
+    throw err;
+  }
+}
 
 export default async function PloAttainmentsPage({
   params,
@@ -22,15 +36,16 @@ export default async function PloAttainmentsPage({
 }) {
   const { id } = await params;
   const { cohortId: cohortIdParam } = await searchParams;
+  const program = await getProgram(id);
   const selectedCohortId = cohortIdParam ?? '';
   const cohortQuery = selectedCohortId ? `&cohortId=${selectedCohortId}` : '';
 
   const [cohorts, plos, students, allPloRows, benchmark] = await Promise.all([
-    apiFetch<Cohort[]>(`/cohorts?programId=${id}`),
-    apiFetch<Plo[]>(`/plos?programId=${id}`),
-    apiFetch<Student[]>(`/students?programId=${id}${cohortQuery}`),
+    apiFetch<Cohort[]>(`/cohorts?programId=${program.id}`),
+    apiFetch<Plo[]>(`/plos?programId=${program.id}`),
+    apiFetch<Student[]>(`/students?programId=${program.id}${cohortQuery}`),
     apiFetch<PloAttainmentByStudentRow[]>('/reports/plo-attainment-by-student'),
-    apiFetch<AttainmentBenchmark>(`/attainment-benchmark?programId=${id}`),
+    apiFetch<AttainmentBenchmark>(`/attainment-benchmark?programId=${program.id}`),
   ]);
 
   const studentIds = new Set(students.map((s) => s.id));
@@ -136,7 +151,7 @@ export default async function PloAttainmentsPage({
                   >
                     <td className={`${studentCols} ${rowBg} px-3 py-1.5`}>
                       <Link
-                        href={`/programs/${id}/students/${student.id}`}
+                        href={`/programs/${program.code}/students/${student.id}`}
                         className="hover:underline"
                       >
                         <div className="font-medium">{student.studentNumber}</div>

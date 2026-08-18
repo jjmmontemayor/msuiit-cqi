@@ -64,6 +64,21 @@ export async function createProgram(formData: FormData) {
   redirect(`/admin/programs/${program.id}`);
 }
 
+export async function updateProgramName(programId: string, formData: FormData) {
+  const name = str(formData, 'name');
+  if (!name) return;
+
+  await apiFetch(`/programs/${programId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  });
+
+  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath('/admin');
+  revalidatePath(`/programs/${programId}`, 'layout');
+  revalidatePath('/');
+}
+
 export async function createCohort(programId: string, formData: FormData) {
   const code = str(formData, 'code');
   const startYear = optInt(formData, 'startYear');
@@ -77,6 +92,28 @@ export async function createCohort(programId: string, formData: FormData) {
       code,
       startYear,
       endYear,
+      description: description || undefined,
+    }),
+  });
+
+  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/programs/${programId}`);
+}
+
+export async function updateCohort(
+  programId: string,
+  cohortId: string,
+  formData: FormData,
+) {
+  const code = str(formData, 'code');
+  const description = str(formData, 'description');
+
+  await apiFetch(`/cohorts/${cohortId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      code: code || undefined,
+      startYear: optInt(formData, 'startYear'),
+      endYear: optInt(formData, 'endYear'),
       description: description || undefined,
     }),
   });

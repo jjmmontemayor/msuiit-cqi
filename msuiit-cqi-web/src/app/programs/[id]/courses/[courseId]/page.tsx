@@ -46,7 +46,7 @@ export default async function CourseDetailsPage({
     <div className="space-y-8">
       <div>
         <Link
-          href={`/programs/${program.id}`}
+          href={`/programs/${program.code}`}
           className="text-sm text-neutral-500 hover:underline"
         >
           &larr; {program.code}

@@ -68,7 +68,7 @@ export default async function AdminCourseClosPage({
     <div className="space-y-8">
       <div>
         <Link
-          href={`/programs/${program.id}/courses/${course.id}`}
+          href={`/programs/${program.code}/courses/${course.id}`}
           className="text-sm text-neutral-500 hover:underline"
         >
           &larr; View {course.code}

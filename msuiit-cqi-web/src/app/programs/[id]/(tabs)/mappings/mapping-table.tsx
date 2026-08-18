@@ -43,12 +43,14 @@ function CheckIcon() {
 
 export function MappingTable({
   programId,
+  programCode,
   cohortId,
   courses,
   plos,
   mappings,
 }: {
   programId: string;
+  programCode: string;
   cohortId: string;
   courses: CourseWithClos[];
   plos: Plo[];
@@ -90,12 +92,15 @@ export function MappingTable({
                 >
                   <div className="flex items-center gap-1.5">
                     <Link
-                      href={`/programs/${programId}/courses/${course.id}`}
+                      href={`/programs/${programCode}/courses/${course.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="hover:underline"
                     >
-                      {course.code}
+                      <div>{course.code}</div>
+                      <div className="whitespace-normal text-xs font-normal text-neutral-500 dark:text-neutral-400">
+                        {course.title}
+                      </div>
                     </Link>
                     {course.clos.length > 0 && (
                       <button

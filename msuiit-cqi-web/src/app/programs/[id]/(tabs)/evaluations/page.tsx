@@ -1,14 +1,28 @@
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import {
   apiFetch,
+  ApiError,
   type PerformanceIndicator,
   type PiEvaluation,
   type Plo,
+  type Program,
 } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
 
 type PloWithPis = Plo & { performanceIndicators: PerformanceIndicator[] };
+
+async function getProgram(id: string): Promise<Program> {
+  try {
+    return await apiFetch<Program>(`/programs/${id}`);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) {
+      notFound();
+    }
+    throw err;
+  }
+}
 
 export default async function EvaluationsPage({
   params,
@@ -16,9 +30,10 @@ export default async function EvaluationsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const program = await getProgram(id);
 
   const [plos, evaluations] = await Promise.all([
-    apiFetch<PloWithPis[]>(`/plos?programId=${id}`),
+    apiFetch<PloWithPis[]>(`/plos?programId=${program.id}`),
     apiFetch<PiEvaluation[]>('/evaluations'),
   ]);
 
@@ -34,7 +49,7 @@ export default async function EvaluationsPage({
       {plos.length === 0 ? (
         <p className="text-sm text-neutral-500">
           No PLOs set up for this program yet —{' '}
-          <Link href={`/admin/programs/${id}`} className="underline">
+          <Link href={`/admin/programs/${program.id}`} className="underline">
             add some in Admin
           </Link>
           .

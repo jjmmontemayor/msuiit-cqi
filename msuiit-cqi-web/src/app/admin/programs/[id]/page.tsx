@@ -14,18 +14,17 @@ import {
   type Program,
 } from '@/lib/api';
 import {
-  addCohortAdviser,
   createAndLinkCourse,
   createCohort,
   createPlo,
-  deleteCohort,
   deletePlo,
   linkExistingCourse,
-  removeCohortAdviser,
   unlinkCourse,
   updateAttainmentBenchmark,
   updateMappingLevelWeights,
+  updateProgramName,
 } from '../../actions';
+import { BatchRow } from './batch-row';
 
 export const dynamic = 'force-dynamic';
 
@@ -91,7 +90,7 @@ export default async function AdminProgramPage({
           href="/admin"
           className="text-sm text-neutral-500 hover:underline"
         >
-          &larr; Admin
+          &larr; Programs
         </Link>
         <div className="mt-1 flex items-start justify-between gap-4">
           <div>
@@ -112,7 +111,7 @@ export default async function AdminProgramPage({
               Edit CLO-PLO Mapping
             </Link>
             <Link
-              href={`/programs/${program.id}`}
+              href={`/programs/${program.code}`}
               className="rounded-md border border-neutral-200 px-3 py-1.5 text-sm hover:border-neutral-400 dark:border-neutral-800 dark:hover:border-neutral-600"
             >
               View
@@ -120,6 +119,31 @@ export default async function AdminProgramPage({
           </div>
         </div>
       </div>
+
+      <section className="rounded-md border border-neutral-200 p-4 dark:border-neutral-800">
+        <h2 className="text-lg font-medium">Program Name</h2>
+        <form
+          action={updateProgramName.bind(null, program.id)}
+          className="mt-3 flex flex-wrap items-end gap-3"
+        >
+          <label className="text-sm">
+            Name
+            <input
+              name="name"
+              required
+              maxLength={255}
+              defaultValue={program.name}
+              className="mt-1 block w-full min-w-[20rem] rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            />
+          </label>
+          <button
+            type="submit"
+            className="rounded-md bg-neutral-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"
+          >
+            Save Name
+          </button>
+        </form>
+      </section>
 
       <section>
         <div className="flex items-center justify-between">
@@ -146,75 +170,13 @@ export default async function AdminProgramPage({
                 (f) => !assignedFacultyIds.has(f.id),
               );
               return (
-                <li key={cohort.id} className="px-4 py-2.5">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm">
-                      <span className="font-medium">{cohort.code}</span>
-                      {cohort.description && (
-                        <span className="ml-2 text-neutral-600 dark:text-neutral-400">
-                          {cohort.description}
-                        </span>
-                      )}
-                    </div>
-                    <form action={deleteCohort.bind(null, program.id, cohort.id)}>
-                      <button
-                        type="submit"
-                        className="shrink-0 text-sm text-red-600 hover:underline dark:text-red-400"
-                      >
-                        Delete
-                      </button>
-                    </form>
-                  </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-neutral-500">Advisers:</span>
-                    {advisers.length === 0 ? (
-                      <span className="text-xs text-neutral-400">None assigned</span>
-                    ) : (
-                      advisers.map((ca) => (
-                        <span
-                          key={ca.id}
-                          className="inline-flex items-center gap-1 rounded-full border border-neutral-200 px-2 py-0.5 text-xs dark:border-neutral-700"
-                        >
-                          {ca.faculty.name}
-                          <form action={removeCohortAdviser.bind(null, program.id, ca.id)}>
-                            <button
-                              type="submit"
-                              title="Remove adviser"
-                              aria-label="Remove adviser"
-                              className="text-neutral-400 hover:text-red-600 dark:hover:text-red-400"
-                            >
-                              &times;
-                            </button>
-                          </form>
-                        </span>
-                      ))
-                    )}
-                    {availableFaculty.length > 0 && (
-                      <form
-                        action={addCohortAdviser.bind(null, program.id, cohort.id)}
-                        className="flex items-center gap-1"
-                      >
-                        <select
-                          name="facultyId"
-                          defaultValue=""
-                          className="rounded border border-neutral-300 px-1.5 py-0.5 text-xs dark:border-neutral-700 dark:bg-neutral-900"
-                        >
-                          <option value="" disabled>
-                            Add adviser&hellip;
-                          </option>
-                          {availableFaculty.map((f) => (
-                            <option key={f.id} value={f.id}>
-                              {f.name}
-                            </option>
-                          ))}
-                        </select>
-                        <button type="submit" className="text-xs underline">
-                          Add
-                        </button>
-                      </form>
-                    )}
-                  </div>
-                </li>
+                <BatchRow
+                  key={cohort.id}
+                  programId={program.id}
+                  cohort={cohort}
+                  advisers={advisers}
+                  availableFaculty={availableFaculty}
+                />
               );
             })}
           </ul>

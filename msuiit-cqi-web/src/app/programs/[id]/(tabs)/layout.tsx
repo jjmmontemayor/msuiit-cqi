@@ -42,7 +42,7 @@ export default async function ProgramLayout({
         )}
       </div>
 
-      <ProgramTabs programId={program.id} />
+      <ProgramTabs programCode={program.code} />
 
       {children}
     </div>

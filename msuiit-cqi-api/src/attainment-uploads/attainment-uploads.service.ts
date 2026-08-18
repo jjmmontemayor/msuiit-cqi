@@ -50,7 +50,9 @@ export class AttainmentUploadsService {
     try {
       wb = XLSX.read(file.buffer, { type: 'buffer' });
     } catch {
-      throw new BadRequestException('Could not read the uploaded file as an Excel workbook.');
+      throw new BadRequestException(
+        'Could not read the uploaded file as an Excel workbook.',
+      );
     }
 
     const sheet = wb.Sheets['CLO_Attainments'] ?? wb.Sheets[wb.SheetNames[0]];
@@ -86,7 +88,12 @@ export class AttainmentUploadsService {
       // terms an admin has already set up, never a create. The faculty
       // uploading only picks a semester + academic year.
       let academicTermId = dto.academicTermId;
-      if (!academicTermId && dto.schoolYearStart != null && dto.schoolYearEnd != null && dto.semester) {
+      if (
+        !academicTermId &&
+        dto.schoolYearStart != null &&
+        dto.schoolYearEnd != null &&
+        dto.semester
+      ) {
         const term = await tx.academicTerm.findUnique({
           where: {
             schoolYearStart_schoolYearEnd_semester: {
@@ -140,7 +147,11 @@ export class AttainmentUploadsService {
       // of that CLO when the student has no cohort (out-of-program) or
       // that cohort has no CLO of this code.
       const cloCache = new Map<string, { id: string } | null>();
-      async function resolveClo(courseId: string, code: string, cohortId: string | null) {
+      async function resolveClo(
+        courseId: string,
+        code: string,
+        cohortId: string | null,
+      ) {
         const cacheKey = `${courseId}::${code}::${cohortId ?? ''}`;
         if (cloCache.has(cacheKey)) return cloCache.get(cacheKey)!;
 
@@ -195,7 +206,9 @@ export class AttainmentUploadsService {
           if (!course) continue;
           const offering = offeringByCourseId.get(course.id)!;
 
-          const scoresInBlock = CLO_CODES.map((_, i) => row[block.startCol + i]);
+          const scoresInBlock = CLO_CODES.map(
+            (_, i) => row[block.startCol + i],
+          );
           const hasAnyScore = scoresInBlock.some((s) => s != null);
           if (!hasAnyScore) continue;
 
@@ -217,15 +230,28 @@ export class AttainmentUploadsService {
           for (let i = 0; i < CLO_CODES.length; i++) {
             const score = row[block.startCol + i];
             if (score == null) continue;
-            const clo = await resolveClo(course.id, CLO_CODES[i], student.cohortId);
+            const clo = await resolveClo(
+              course.id,
+              CLO_CODES[i],
+              student.cohortId,
+            );
             if (!clo) {
               attainmentsSkippedNoClo += 1;
               continue;
             }
             await tx.cloAttainment.upsert({
-              where: { enrollmentId_cloId: { enrollmentId: enrollment.id, cloId: clo.id } },
+              where: {
+                enrollmentId_cloId: {
+                  enrollmentId: enrollment.id,
+                  cloId: clo.id,
+                },
+              },
               update: { score: Number(score) },
-              create: { enrollmentId: enrollment.id, cloId: clo.id, score: Number(score) },
+              create: {
+                enrollmentId: enrollment.id,
+                cloId: clo.id,
+                score: Number(score),
+              },
             });
             attainmentsRecorded += 1;
           }

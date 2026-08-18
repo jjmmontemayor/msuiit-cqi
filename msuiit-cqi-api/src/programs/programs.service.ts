@@ -33,21 +33,23 @@ export class ProgramsService {
     return this.prisma.program.findMany({ orderBy: { code: 'asc' } });
   }
 
-  async findOne(id: string) {
-    const program = await this.prisma.program.findUnique({ where: { id } });
+  async findOne(idOrCode: string) {
+    const program = await this.prisma.program.findFirst({
+      where: { OR: [{ id: idOrCode }, { code: idOrCode }] },
+    });
     if (!program) {
-      throw new NotFoundException(`Program ${id} not found`);
+      throw new NotFoundException(`Program ${idOrCode} not found`);
     }
     return program;
   }
 
-  async update(id: string, dto: UpdateProgramDto) {
-    await this.findOne(id);
-    return this.prisma.program.update({ where: { id }, data: dto });
+  async update(idOrCode: string, dto: UpdateProgramDto) {
+    const program = await this.findOne(idOrCode);
+    return this.prisma.program.update({ where: { id: program.id }, data: dto });
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
-    return this.prisma.program.delete({ where: { id } });
+  async remove(idOrCode: string) {
+    const program = await this.findOne(idOrCode);
+    return this.prisma.program.delete({ where: { id: program.id } });
   }
 }

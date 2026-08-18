@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { apiFetch, type Clo, type Cohort, type CloPloMapping, type Course, type MappingLevel, type Plo } from '@/lib/api';
+import { notFound } from 'next/navigation';
+import { apiFetch, ApiError, type Clo, type Cohort, type CloPloMapping, type Course, type MappingLevel, type Plo, type Program } from '@/lib/api';
 import { buildPloSummary } from '@/lib/mapping-summary';
 import { MappingSummaryTable } from '@/components/mapping-summary-table';
 import { WeightComputationTable } from '@/components/weight-computation-table';
@@ -8,6 +9,17 @@ import { MappingTable } from './mapping-table';
 export const dynamic = 'force-dynamic';
 
 type CourseWithClos = Course & { clos: Clo[] };
+
+async function getProgram(id: string): Promise<Program> {
+  try {
+    return await apiFetch<Program>(`/programs/${id}`);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) {
+      notFound();
+    }
+    throw err;
+  }
+}
 
 export default async function MappingsPage({
   params,
@@ -18,11 +30,12 @@ export default async function MappingsPage({
 }) {
   const { id } = await params;
   const { cohortId: cohortIdParam } = await searchParams;
+  const program = await getProgram(id);
 
   const [cohorts, plos, mappingLevels] = await Promise.all([
-    apiFetch<Cohort[]>(`/cohorts?programId=${id}`),
-    apiFetch<Plo[]>(`/plos?programId=${id}`),
-    apiFetch<MappingLevel[]>(`/mapping-levels?programId=${id}`),
+    apiFetch<Cohort[]>(`/cohorts?programId=${program.id}`),
+    apiFetch<Plo[]>(`/plos?programId=${program.id}`),
+    apiFetch<MappingLevel[]>(`/mapping-levels?programId=${program.id}`),
   ]);
   const weights = Object.fromEntries(mappingLevels.map((l) => [l.code, l.weight])) as Record<
     'I' | 'P' | 'D',
@@ -32,7 +45,7 @@ export default async function MappingsPage({
   const selectedCohortId = cohortIdParam || cohorts[0]?.id;
   const [courses, mappings] = await Promise.all([
     apiFetch<CourseWithClos[]>(
-      `/courses?programId=${id}${selectedCohortId ? `&cohortId=${selectedCohortId}` : ''}`,
+      `/courses?programId=${program.id}${selectedCohortId ? `&cohortId=${selectedCohortId}` : ''}`,
     ),
     selectedCohortId
       ? apiFetch<CloPloMapping[]>(`/mappings?cohortId=${selectedCohortId}`)
@@ -46,7 +59,7 @@ export default async function MappingsPage({
       <p className="text-sm text-neutral-500">
         No batches set up for this program yet — CLO-PLO mapping is scoped per
         batch, so{' '}
-        <Link href={`/admin/programs/${id}`} className="underline">
+        <Link href={`/admin/programs/${program.id}`} className="underline">
           add one in Admin
         </Link>
         .
@@ -91,7 +104,7 @@ export default async function MappingsPage({
       {courses.length === 0 ? (
         <p className="text-sm text-neutral-500">
           No courses set up for this program yet —{' '}
-          <Link href={`/admin/programs/${id}`} className="underline">
+          <Link href={`/admin/programs/${program.id}`} className="underline">
             add some in Admin
           </Link>
           .
@@ -99,7 +112,8 @@ export default async function MappingsPage({
       ) : (
         <div className="max-h-[70vh] overflow-auto rounded-md border border-neutral-200 dark:border-neutral-800">
           <MappingTable
-            programId={id}
+            programId={program.id}
+            programCode={program.code}
             cohortId={selectedCohortId ?? ''}
             courses={courses}
             plos={plos}
@@ -126,7 +140,7 @@ export default async function MappingsPage({
           <div className="flex items-center gap-1.5">
             <h2 className="text-lg font-medium">CLO-PLO Weight Computation</h2>
             <Link
-              href={`/admin/programs/${id}`}
+              href={`/admin/programs/${program.id}`}
               title="Edit weights"
               aria-label="Edit weights"
               className="rounded-md p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"

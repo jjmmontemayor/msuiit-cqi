@@ -10,13 +10,13 @@ const TABS = [
   { segment: 'evaluations', label: 'Evaluations' },
 ];
 
-export function ProgramTabs({ programId }: { programId: string }) {
+export function ProgramTabs({ programCode }: { programCode: string }) {
   const pathname = usePathname();
 
   return (
     <nav className="flex gap-1 border-b border-neutral-200 dark:border-neutral-800">
       {TABS.map((tab) => {
-        const href = `/programs/${programId}/${tab.segment}`;
+        const href = `/programs/${programCode}/${tab.segment}`;
         const active = pathname === href;
         return (
           <Link

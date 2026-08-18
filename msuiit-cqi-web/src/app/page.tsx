@@ -42,7 +42,7 @@ export default async function DashboardPage() {
             {programs.map((program) => (
               <li key={program.id}>
                 <Link
-                  href={`/programs/${program.id}`}
+                  href={`/programs/${program.code}`}
                   className="flex items-center justify-between px-4 py-3 hover:bg-neutral-100 dark:hover:bg-neutral-900"
                 >
                   <span>

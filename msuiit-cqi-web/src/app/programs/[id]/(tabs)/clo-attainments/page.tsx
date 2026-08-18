@@ -1,12 +1,15 @@
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import {
   apiFetch,
+  ApiError,
   type AttainmentBenchmark,
   type Clo,
   type Cohort,
   type CloAttainmentByCourseRow,
   type CloAttainmentMatrixRow,
   type Course,
+  type Program,
   type Student,
 } from '@/lib/api';
 import { belowBenchmarkClass, buildBatchColorMap } from '@/lib/attainment-display';
@@ -18,6 +21,17 @@ type CourseWithClos = Course & { clos: Clo[] };
 
 const studentCols = 'sticky left-0 z-10 w-48';
 
+async function getProgram(id: string): Promise<Program> {
+  try {
+    return await apiFetch<Program>(`/programs/${id}`);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) {
+      notFound();
+    }
+    throw err;
+  }
+}
+
 export default async function CloAttainmentsPage({
   params,
   searchParams,
@@ -27,19 +41,20 @@ export default async function CloAttainmentsPage({
 }) {
   const { id } = await params;
   const { cohortId: cohortIdParam } = await searchParams;
+  const program = await getProgram(id);
   const selectedCohortId = cohortIdParam ?? '';
   const cohortQuery = selectedCohortId ? `&cohortId=${selectedCohortId}` : '';
 
   const [cohorts, courses, students, matrixRows, byCourseRows, benchmark] =
     await Promise.all([
-      apiFetch<Cohort[]>(`/cohorts?programId=${id}`),
-      apiFetch<CourseWithClos[]>(`/courses?programId=${id}${cohortQuery}`),
-      apiFetch<Student[]>(`/students?programId=${id}${cohortQuery}`),
+      apiFetch<Cohort[]>(`/cohorts?programId=${program.id}`),
+      apiFetch<CourseWithClos[]>(`/courses?programId=${program.id}${cohortQuery}`),
+      apiFetch<Student[]>(`/students?programId=${program.id}${cohortQuery}`),
       apiFetch<CloAttainmentMatrixRow[]>(
-        `/reports/clo-attainment-matrix?programId=${id}${cohortQuery}`,
+        `/reports/clo-attainment-matrix?programId=${program.id}${cohortQuery}`,
       ),
       apiFetch<CloAttainmentByCourseRow[]>('/reports/clo-attainment-by-course'),
-      apiFetch<AttainmentBenchmark>(`/attainment-benchmark?programId=${id}`),
+      apiFetch<AttainmentBenchmark>(`/attainment-benchmark?programId=${program.id}`),
     ]);
 
   const coursesWithClos = courses.filter((c) => c.clos.length > 0);
@@ -132,7 +147,7 @@ export default async function CloAttainmentsPage({
                     className="border-l border-neutral-200 px-3 py-2 text-center dark:border-neutral-800"
                   >
                     <Link
-                      href={`/programs/${id}/courses/${course.id}`}
+                      href={`/programs/${program.code}/courses/${course.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="hover:underline"
@@ -171,7 +186,7 @@ export default async function CloAttainmentsPage({
                   >
                     <td className={`${studentCols} ${rowBg} px-3 py-1.5`}>
                       <Link
-                        href={`/programs/${id}/students/${student.id}`}
+                        href={`/programs/${program.code}/students/${student.id}`}
                         className="hover:underline"
                       >
                         <div className="font-medium">{student.studentNumber}</div>

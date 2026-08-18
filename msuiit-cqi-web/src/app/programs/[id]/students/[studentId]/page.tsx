@@ -47,13 +47,13 @@ export default async function StudentAttainmentPage({
   params: Promise<{ id: string; studentId: string }>;
 }) {
   const { id, studentId } = await params;
+  const program = await getProgram(id);
 
-  const [program, student, plos, cohorts, cohortAdvisers, allPloRows, cloRows] =
+  const [student, plos, cohorts, cohortAdvisers, allPloRows, cloRows] =
     await Promise.all([
-      getProgram(id),
       getStudent(studentId),
-      apiFetch<Plo[]>(`/plos?programId=${id}`),
-      apiFetch<Cohort[]>(`/cohorts?programId=${id}`),
+      apiFetch<Plo[]>(`/plos?programId=${program.id}`),
+      apiFetch<Cohort[]>(`/cohorts?programId=${program.id}`),
       apiFetch<CohortAdviser[]>('/cohort-advisers'),
       apiFetch<PloAttainmentByStudentRow[]>('/reports/plo-attainment-by-student'),
       apiFetch<CloAttainmentByStudentRow[]>(
@@ -80,7 +80,7 @@ export default async function StudentAttainmentPage({
     <div className="space-y-8">
       <div>
         <Link
-          href={`/programs/${program.id}/clo-attainments`}
+          href={`/programs/${program.code}/clo-attainments`}
           className="text-sm text-neutral-500 hover:underline"
         >
           &larr; CLO Attainments
@@ -159,7 +159,7 @@ export default async function StudentAttainmentPage({
                       <td className="px-3 py-1.5">
                         {i === 0 ? (
                           <Link
-                            href={`/programs/${program.id}/courses/${row.course_id}`}
+                            href={`/programs/${program.code}/courses/${row.course_id}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="hover:underline"

@@ -192,12 +192,15 @@ export default async function AdminMappingsPage({
                         className="sticky left-0 z-10 w-36 whitespace-nowrap bg-white px-3 py-1.5 align-top font-medium dark:bg-neutral-950"
                       >
                         <Link
-                          href={`/programs/${program.id}/courses/${course.id}`}
+                          href={`/programs/${program.code}/courses/${course.id}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="hover:underline"
                         >
-                          {course.code}
+                          <div>{course.code}</div>
+                          <div className="whitespace-normal text-xs font-normal text-neutral-500 dark:text-neutral-400">
+                            {course.title}
+                          </div>
                         </Link>
                       </td>
                     )}
