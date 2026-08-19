@@ -198,7 +198,7 @@ export async function createPlo(programId: string, formData: FormData) {
   const code = str(formData, 'code');
   const description = str(formData, 'description');
 
-  await apiFetch('/plos', {
+  const plo = await apiFetch<{ id: string }>('/plos', {
     method: 'POST',
     body: JSON.stringify({
       programId,
@@ -207,6 +207,25 @@ export async function createPlo(programId: string, formData: FormData) {
       displayOrder: optInt(formData, 'displayOrder'),
     }),
   });
+
+  const piLines = str(formData, 'performanceIndicators')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  await Promise.all(
+    piLines.map((description, i) =>
+      apiFetch('/performance-indicators', {
+        method: 'POST',
+        body: JSON.stringify({
+          ploId: plo.id,
+          code: `PI${i + 1}`,
+          description,
+          displayOrder: i + 1,
+        }),
+      }),
+    ),
+  );
 
   revalidatePath(`/admin/programs/${programId}`);
   revalidatePath(`/programs/${programId}`);

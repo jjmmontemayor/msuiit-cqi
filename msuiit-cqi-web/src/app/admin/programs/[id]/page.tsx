@@ -445,6 +445,15 @@ export default async function AdminProgramPage({
               className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
             />
           </label>
+          <label className="text-sm sm:col-span-4">
+            Performance Indicators (optional — one per line, numbered PI1, PI2, &hellip; in order)
+            <textarea
+              name="performanceIndicators"
+              rows={3}
+              placeholder={'Identify key components and algorithms necessary for a solution\nProduce a solution with specifications'}
+              className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            />
+          </label>
           <div className="sm:col-span-4">
             <button
               type="submit"

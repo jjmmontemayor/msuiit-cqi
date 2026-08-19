@@ -11,7 +11,7 @@ import {
   type Program,
 } from '@/lib/api';
 import { LEVEL_BADGE_CLASSES } from '@/lib/mapping-level-colors';
-import { PiCell } from './pi-cell';
+import { PiToggleCell } from './pi-cell';
 
 export const dynamic = 'force-dynamic';
 
@@ -122,21 +122,56 @@ export default async function CloPiMappingPage({
           <table className="min-w-full border-collapse text-sm">
             <thead className="sticky top-0 z-20 bg-neutral-100 dark:bg-neutral-900">
               <tr>
-                <th className="sticky left-0 z-30 w-36 bg-neutral-100 px-3 py-2 text-left dark:bg-neutral-900">
+                <th
+                  rowSpan={2}
+                  className="sticky left-0 z-30 w-36 bg-neutral-100 px-3 py-2 text-left align-bottom dark:bg-neutral-900"
+                >
                   Course
                 </th>
-                <th className="sticky left-[9rem] z-30 w-64 bg-neutral-100 px-3 py-2 text-left dark:bg-neutral-900">
+                <th
+                  rowSpan={2}
+                  className="sticky left-[9rem] z-30 w-64 bg-neutral-100 px-3 py-2 text-left align-bottom dark:bg-neutral-900"
+                >
                   CLO
                 </th>
-                {plos.map((plo) => (
-                  <th
-                    key={plo.id}
-                    className="w-48 px-3 py-2 text-center"
-                    title={plo.description}
-                  >
-                    {plo.code}
-                  </th>
-                ))}
+                {plos.map((plo) => {
+                  const pis = piByPlo.get(plo.id) ?? [];
+                  return (
+                    <th
+                      key={plo.id}
+                      colSpan={Math.max(pis.length, 1)}
+                      className="border-l border-neutral-200 px-3 py-2 text-center dark:border-neutral-800"
+                      title={plo.description}
+                    >
+                      {plo.code}
+                    </th>
+                  );
+                })}
+              </tr>
+              <tr>
+                {plos.map((plo) => {
+                  const pis = piByPlo.get(plo.id) ?? [];
+                  return pis.length === 0 ? (
+                    <th
+                      key={plo.id}
+                      className="w-20 border-l border-neutral-200 px-2 py-1.5 text-center text-xs font-medium text-neutral-500 dark:border-neutral-800 dark:text-neutral-400"
+                    >
+                      &mdash;
+                    </th>
+                  ) : (
+                    pis.map((pi, piIdx) => (
+                      <th
+                        key={pi.id}
+                        title={pi.description}
+                        className={`w-20 px-2 py-1.5 text-center text-xs font-medium text-neutral-500 dark:text-neutral-400 ${
+                          piIdx === 0 ? 'border-l border-neutral-200 dark:border-neutral-800' : ''
+                        }`}
+                      >
+                        {pi.code}
+                      </th>
+                    ))
+                  );
+                })}
               </tr>
             </thead>
             <tbody>
@@ -165,30 +200,53 @@ export default async function CloPiMappingPage({
                     {plos.map((plo) => {
                       const mapping = mappingByCloAndPlo.get(`${clo.id}::${plo.id}`);
                       const pis = piByPlo.get(plo.id) ?? [];
-                      return (
-                        <td key={plo.id} className="px-2 py-1.5 align-top">
-                          {!mapping ? (
-                            <span className="flex h-7 items-center justify-center text-neutral-300 dark:text-neutral-700">
-                              —
-                            </span>
-                          ) : pis.length === 0 ? (
+
+                      if (!mapping) {
+                        return (
+                          <td
+                            key={plo.id}
+                            colSpan={Math.max(pis.length, 1)}
+                            className="border-l border-neutral-200 px-2 py-1.5 text-center text-neutral-300 dark:border-neutral-800 dark:text-neutral-700"
+                          >
+                            &mdash;
+                          </td>
+                        );
+                      }
+
+                      if (pis.length === 0) {
+                        return (
+                          <td
+                            key={plo.id}
+                            className="border-l border-neutral-200 px-2 py-1.5 text-center dark:border-neutral-800"
+                          >
                             <span
-                              className={`flex h-7 items-center justify-center rounded text-xs font-medium ${LEVEL_BADGE_CLASSES[mapping.levelCode]}`}
+                              className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium ${LEVEL_BADGE_CLASSES[mapping.levelCode]}`}
                               title="No Performance Indicators defined for this PLO yet"
                             >
                               {mapping.levelCode}
                             </span>
-                          ) : (
-                            <PiCell
-                              programCode={program.code}
-                              mappingId={mapping.id}
-                              performanceIndicators={pis}
-                              initialPiId={mapping.piId}
-                              initialAssessmentMethod={mapping.assessmentMethod}
-                            />
-                          )}
+                          </td>
+                        );
+                      }
+
+                      return pis.map((pi, piIdx) => (
+                        <td
+                          key={pi.id}
+                          className={`px-1 py-1.5 align-top ${
+                            piIdx === 0 ? 'border-l border-neutral-200 dark:border-neutral-800' : ''
+                          }`}
+                        >
+                          <PiToggleCell
+                            programCode={program.code}
+                            mappingId={mapping.id}
+                            piId={pi.id}
+                            isSelected={mapping.piId === pi.id}
+                            initialAssessmentMethod={
+                              mapping.piId === pi.id ? mapping.assessmentMethod : null
+                            }
+                          />
                         </td>
-                      );
+                      ));
                     })}
                   </tr>
                 )),
