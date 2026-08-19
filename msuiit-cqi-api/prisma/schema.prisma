@@ -25,6 +25,7 @@ model Program {
   curriculumCourses    CurriculumCourse[]
   plos                 Plo[]
   cohorts              Cohort[]
+  curriculumVersions   CurriculumVersion[]
   students             Student[]
   userRoles            UserProgramRole[]
   mappingLevels        MappingLevel[]
@@ -63,8 +64,9 @@ enum MappingLevelCode {
 // into a weighted score), so this is one row per (program, code) rather
 // than a single global row per code. Not directly related to CloPloMapping
 // at the Prisma level -- CloPloMapping.levelCode is a bare enum, and the
-// applicable weight is looked up by (the mapping's cohort's program, code)
-// in the reporting views and the admin weight-computation table.
+// applicable weight is looked up by (the mapping's curriculum version's
+// program, code) in the reporting views and the admin weight-computation
+// table.
 model MappingLevel {
   id        String           @id @default(uuid())
   programId String           @map("program_id")
@@ -164,60 +166,84 @@ model PerformanceIndicator {
   @@map("performance_indicators")
 }
 
-// `cohortId` scopes the CLO itself to one batch, the same way CloPloMapping
-// is cohort-scoped: curricula get revised between batches, and a course's
-// CLOs can be rewritten outright (not just re-mapped) for a later cohort.
-// `isLocked` marks a CLO (and by extension its mappings) as finalized for
-// reporting; a locked CLO can't be edited or deleted in place — instead, a
-// new CLO row is created under the next cohort ("a new version"), leaving
-// the locked one and its historical mappings/attainments untouched.
+// A curriculum revision, e.g. "2018 Rev.3" (matching how the source BOR
+// curriculum document versions the whole program). CLOs and CLO-PLO/PI
+// mappings are defined against a version, independent of any cohort/batch --
+// that work can happen before a batch exists, or before a batch is assigned
+// to it. Multiple cohorts admitted under the same curriculum share one
+// version, so a new cohort doesn't need its CLOs/mappings duplicated unless
+// the curriculum actually changed (see Clo/CloPloMapping below).
+model CurriculumVersion {
+  id          String   @id @default(uuid())
+  programId   String   @map("program_id")
+  code        String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  program        Program         @relation(fields: [programId], references: [id], onDelete: Cascade)
+  cohorts        Cohort[]
+  clos           Clo[]
+  cloPloMappings CloPloMapping[]
+
+  @@unique([programId, code])
+  @@map("curriculum_versions")
+}
+
+// `curriculumVersionId` scopes the CLO to a curriculum revision, not a
+// batch: definition work (CLOs, CLO-PLO/PI mappings) is independent of
+// which cohorts exist or have been assigned to that version. `isLocked`
+// marks a CLO (and by extension its mappings) as finalized for reporting; a
+// locked CLO can't be edited or deleted in place — instead, a new CLO row
+// is created under the next curriculum version, leaving the locked one and
+// its historical mappings/attainments untouched.
 model Clo {
-  id           String  @id @default(uuid())
-  courseId     String  @map("course_id")
-  cohortId     String  @map("cohort_id")
-  code         String
-  description  String
-  displayOrder Int     @default(0) @map("display_order")
-  isLocked     Boolean @default(false) @map("is_locked")
+  id                  String  @id @default(uuid())
+  courseId            String  @map("course_id")
+  curriculumVersionId String  @map("curriculum_version_id")
+  code                String
+  description         String
+  displayOrder        Int     @default(0) @map("display_order")
+  isLocked            Boolean @default(false) @map("is_locked")
 
-  course      Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  cohort      Cohort          @relation(fields: [cohortId], references: [id], onDelete: Cascade)
-  ploMappings CloPloMapping[]
-  attainments CloAttainment[]
+  course            Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  curriculumVersion CurriculumVersion @relation(fields: [curriculumVersionId], references: [id], onDelete: Cascade)
+  ploMappings       CloPloMapping[]
+  attainments       CloAttainment[]
 
-  @@unique([courseId, code, cohortId])
+  @@unique([courseId, code, curriculumVersionId])
   @@map("clos")
 }
 
 // The CLO->PLO mapping level (I/P/D) is the primary fact — every course's
 // CLOs are mapped straight to all applicable PLOs (see the workbook's
 // `Mapping` sheet, which has no PI column at all). `piId` is an optional
-// refinement: once a program elaborates a PLO into specific Performance
-// Indicators (as the `PLO Attainment Evaluation` sheet does, so far only for
-// PLO1 in the source workbook), the same CLO/PLO pairing can additionally be
-// tagged with which PI it evidences and how it's assessed. Making PI
-// mandatory here would make it impossible to import/record a CLO->PLO
-// mapping before every PI has been written up.
+// refinement: once a specific CLO/PLO pairing has been elaborated to name
+// which Performance Indicator it evidences, the same pairing can
+// additionally be tagged with that PI and how it's assessed. Making PI
+// mandatory here would make it impossible to record a CLO->PLO mapping
+// before its PI-level refinement is done.
 //
-// `cohortId` scopes the mapping to one batch: curricula get revised over
-// time, so the same CLO can map to a PLO at a different I/P/D level (or not
-// at all) for a later batch. Each cohort therefore owns its own complete
-// mapping set rather than sharing one global table.
+// `curriculumVersionId` scopes the mapping to a curriculum revision, the
+// same way Clo is scoped: curricula get revised over time, so the same CLO
+// can map to a PLO at a different I/P/D level (or not at all) in a later
+// version. Each version therefore owns its own complete mapping set rather
+// than sharing one global table.
 model CloPloMapping {
-  id               String           @id @default(uuid())
-  cloId            String           @map("clo_id")
-  ploId            String           @map("plo_id")
-  cohortId         String           @map("cohort_id")
-  levelCode        MappingLevelCode @map("level_code")
-  piId             String?          @map("pi_id")
-  assessmentMethod String?          @map("assessment_method")
+  id                  String           @id @default(uuid())
+  cloId               String           @map("clo_id")
+  ploId               String           @map("plo_id")
+  curriculumVersionId String           @map("curriculum_version_id")
+  levelCode           MappingLevelCode @map("level_code")
+  piId                String?          @map("pi_id")
+  assessmentMethod    String?          @map("assessment_method")
 
-  clo    Clo                   @relation(fields: [cloId], references: [id], onDelete: Cascade)
-  plo    Plo                   @relation(fields: [ploId], references: [id], onDelete: Cascade)
-  cohort Cohort                @relation(fields: [cohortId], references: [id], onDelete: Cascade)
-  pi     PerformanceIndicator? @relation(fields: [piId], references: [id], onDelete: SetNull)
+  clo               Clo                   @relation(fields: [cloId], references: [id], onDelete: Cascade)
+  plo               Plo                   @relation(fields: [ploId], references: [id], onDelete: Cascade)
+  curriculumVersion CurriculumVersion     @relation(fields: [curriculumVersionId], references: [id], onDelete: Cascade)
+  pi                PerformanceIndicator? @relation(fields: [piId], references: [id], onDelete: SetNull)
 
-  @@unique([cloId, ploId, cohortId])
+  @@unique([cloId, ploId, curriculumVersionId])
   @@map("clo_plo_mappings")
 }
 
@@ -225,20 +251,25 @@ model CloPloMapping {
 // People and enrollment
 // ---------------------------------------------------------------------------
 
+// `curriculumVersionId` is nullable: a batch can be created before its
+// curriculum version has been decided, and a version can be defined before
+// any batch is assigned to it -- the two workflows (admitting a batch,
+// writing/mapping CLOs) run independently and converge when someone assigns
+// one to the other.
 model Cohort {
-  id          String  @id @default(uuid())
-  programId   String  @map("program_id")
-  code        String
-  startYear   Int     @map("start_year")
-  endYear     Int     @map("end_year")
-  description String?
+  id                  String  @id @default(uuid())
+  programId           String  @map("program_id")
+  curriculumVersionId String? @map("curriculum_version_id")
+  code                String
+  startYear           Int     @map("start_year")
+  endYear             Int     @map("end_year")
+  description         String?
 
-  program         Program          @relation(fields: [programId], references: [id], onDelete: Cascade)
-  students        Student[]
-  evaluations     PiEvaluation[]
-  cloPloMappings  CloPloMapping[]
-  clos            Clo[]
-  cohortAdvisers  CohortAdviser[]
+  program           Program            @relation(fields: [programId], references: [id], onDelete: Cascade)
+  curriculumVersion CurriculumVersion? @relation(fields: [curriculumVersionId], references: [id], onDelete: SetNull)
+  students          Student[]
+  evaluations       PiEvaluation[]
+  cohortAdvisers    CohortAdviser[]
 
   @@unique([programId, code])
   @@map("cohorts")
@@ -315,12 +346,37 @@ model CourseOffering {
   section        String?
   instructorName String? @map("instructor_name")
 
-  course       Course       @relation(fields: [courseId], references: [id], onDelete: Restrict)
-  academicTerm AcademicTerm @relation(fields: [academicTermId], references: [id], onDelete: Restrict)
-  enrollments  Enrollment[]
+  course            Course              @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  academicTerm      AcademicTerm        @relation(fields: [academicTermId], references: [id], onDelete: Restrict)
+  enrollments       Enrollment[]
+  learningPlanEntries LearningPlanEntry[]
 
   @@unique([courseId, academicTermId, section])
   @@map("course_offerings")
+}
+
+// A course's learning plan varies by who's actually teaching it and when --
+// two offerings of the same course (different department, instructor, or
+// term) can have entirely different week breakdowns, CO counts, and
+// activities (see docs/source-data sample syllabi). So this is scoped to
+// CourseOffering, not Course. `coLabels` is free text (e.g. "CO1,CO3") rather
+// than a Clo FK: Clo rows are cohort-scoped, and an offering doesn't map
+// cleanly to a single cohort, so a hard link would force an arbitrary choice.
+model LearningPlanEntry {
+  id                String  @id @default(uuid())
+  courseOfferingId  String  @map("course_offering_id")
+  weekLabel         String  @map("week_label")
+  displayOrder      Int     @default(0) @map("display_order")
+  topics            String
+  lessonOutcome     String? @map("lesson_outcome")
+  coLabels          String? @map("co_labels")
+  methodology       String?
+  learningResources String? @map("learning_resources")
+  assessment        String?
+
+  courseOffering CourseOffering @relation(fields: [courseOfferingId], references: [id], onDelete: Cascade)
+
+  @@map("learning_plan_entries")
 }
 
 model Enrollment {

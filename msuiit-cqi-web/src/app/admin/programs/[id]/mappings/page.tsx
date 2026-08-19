@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { apiFetch, ApiError, type Clo, type Cohort, type CloPloMapping, type Course, type MappingLevel, type Plo, type Program } from '@/lib/api';
+import { apiFetch, ApiError, type Clo, type CurriculumVersion, type CloPloMapping, type Course, type MappingLevel, type Plo, type Program } from '@/lib/api';
 import { MappingCell } from './mapping-cell';
-import { copyMappingsFromCohort } from './actions';
+import { copyMappingsFromVersion } from './actions';
 import { buildPloSummary } from '@/lib/mapping-summary';
 import { MappingSummaryTable } from '@/components/mapping-summary-table';
 import { WeightComputationTable } from '@/components/weight-computation-table';
@@ -27,14 +27,14 @@ export default async function AdminMappingsPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ cohortId?: string }>;
+  searchParams: Promise<{ curriculumVersionId?: string }>;
 }) {
   const { id } = await params;
-  const { cohortId: cohortIdParam } = await searchParams;
+  const { curriculumVersionId: versionIdParam } = await searchParams;
   const program = await getProgram(id);
 
-  const [cohorts, plos, mappingLevels] = await Promise.all([
-    apiFetch<Cohort[]>(`/cohorts?programId=${program.id}`),
+  const [curriculumVersions, plos, mappingLevels] = await Promise.all([
+    apiFetch<CurriculumVersion[]>(`/curriculum-versions?programId=${program.id}`),
     apiFetch<Plo[]>(`/plos?programId=${program.id}`),
     apiFetch<MappingLevel[]>(`/mapping-levels?programId=${program.id}`),
   ]);
@@ -43,7 +43,7 @@ export default async function AdminMappingsPage({
     number
   >;
 
-  if (cohorts.length === 0) {
+  if (curriculumVersions.length === 0) {
     return (
       <div className="space-y-4">
         <Link
@@ -53,18 +53,18 @@ export default async function AdminMappingsPage({
           &larr; {program.code}
         </Link>
         <p className="text-sm text-neutral-500">
-          No batches set up yet — add one above before mapping CLOs to PLOs.
+          No curriculum versions set up yet — add one above before mapping CLOs to PLOs.
         </p>
       </div>
     );
   }
 
-  const selectedCohortId = cohortIdParam || cohorts[0].id;
+  const selectedVersionId = versionIdParam || curriculumVersions[0].id;
   const [courses, mappings] = await Promise.all([
     apiFetch<CourseWithClos[]>(
-      `/courses?programId=${program.id}&cohortId=${selectedCohortId}`,
+      `/courses?programId=${program.id}&curriculumVersionId=${selectedVersionId}`,
     ),
-    apiFetch<CloPloMapping[]>(`/mappings?cohortId=${selectedCohortId}`),
+    apiFetch<CloPloMapping[]>(`/mappings?curriculumVersionId=${selectedVersionId}`),
   ]);
 
   const levelByCloAndPlo = new Map<string, CloPloMapping>();
@@ -74,11 +74,11 @@ export default async function AdminMappingsPage({
 
   const summaryRows = buildPloSummary(plos, courses, mappings);
 
-  const otherCohorts = cohorts.filter((c) => c.id !== selectedCohortId);
-  const boundCopyMappings = copyMappingsFromCohort.bind(
+  const otherVersions = curriculumVersions.filter((v) => v.id !== selectedVersionId);
+  const boundCopyMappings = copyMappingsFromVersion.bind(
     null,
     program.id,
-    selectedCohortId,
+    selectedVersionId,
   );
 
   return (
@@ -98,22 +98,22 @@ export default async function AdminMappingsPage({
           <span className="font-medium text-blue-600 dark:text-blue-400">I = Introduced</span>,{' '}
           <span className="font-medium text-amber-600 dark:text-amber-400">P = Practiced</span>,{' '}
           <span className="font-medium text-emerald-600 dark:text-emerald-400">D = Demonstrated</span>,
-          — = not mapped. Each batch has its own mapping — changes save immediately.
+          — = not mapped. Each curriculum version has its own mapping — changes save immediately.
         </p>
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
         <form method="get" className="flex items-end gap-2">
           <label className="text-sm">
-            Batch
+            Curriculum Version
             <select
-              name="cohortId"
-              defaultValue={selectedCohortId}
+              name="curriculumVersionId"
+              defaultValue={selectedVersionId}
               className="mt-1 block w-48 rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
             >
-              {cohorts.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.code}
+              {curriculumVersions.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.code}
                 </option>
               ))}
             </select>
@@ -126,21 +126,21 @@ export default async function AdminMappingsPage({
           </button>
         </form>
 
-        {otherCohorts.length > 0 && (
+        {otherVersions.length > 0 && (
           <form action={boundCopyMappings} className="flex items-end gap-2">
             <label className="text-sm">
               Copy from
               <select
-                name="sourceCohortId"
+                name="sourceCurriculumVersionId"
                 defaultValue=""
                 className="mt-1 block w-48 rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
               >
                 <option value="" disabled>
-                  Select a batch&hellip;
+                  Select a version&hellip;
                 </option>
-                {otherCohorts.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.code}
+                {otherVersions.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.code}
                   </option>
                 ))}
               </select>
@@ -218,7 +218,7 @@ export default async function AdminMappingsPage({
                         <td key={plo.id} className="px-3 py-1.5 text-center">
                           <MappingCell
                             programId={program.id}
-                            cohortId={selectedCohortId}
+                            curriculumVersionId={selectedVersionId}
                             cloId={clo.id}
                             ploId={plo.id}
                             initialLevel={mapping?.levelCode ?? ''}

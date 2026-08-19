@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 
 const TABS = [
   { segment: 'mappings', label: 'CLO-PLO Mapping' },
+  { segment: 'clo-pi-mapping', label: 'CLO-PI Mapping' },
   { segment: 'clo-attainments', label: 'CLO Attainments' },
   { segment: 'plo-attainments', label: 'PLO Attainments' },
   { segment: 'evaluations', label: 'Evaluations' },

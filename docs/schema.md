@@ -24,12 +24,18 @@ erDiagram
     PROGRAMS ||--o{ CURRICULUM_COURSES : offers
     PROGRAMS ||--o{ PLOS : defines
     PROGRAMS ||--o{ COHORTS : has
+    PROGRAMS ||--o{ CURRICULUM_VERSIONS : revises
     PROGRAMS ||--o{ STUDENTS : enrolls
     PROGRAMS ||--o{ USER_PROGRAM_ROLES : scopes
 
     COURSES ||--o{ CURRICULUM_COURSES : "used in"
     COURSES ||--o{ CLOS : defines
     COURSES ||--o{ COURSE_OFFERINGS : "offered as"
+    COURSE_OFFERINGS ||--o{ LEARNING_PLAN_ENTRIES : "planned per"
+
+    CURRICULUM_VERSIONS ||--o{ CLOS : owns
+    CURRICULUM_VERSIONS ||--o{ CLO_PLO_MAPPINGS : owns
+    CURRICULUM_VERSIONS |o--o{ COHORTS : "assigned to"
 
     PLOS ||--o{ PERFORMANCE_INDICATORS : "broken into"
     PLOS ||--o{ CLO_PLO_MAPPINGS : "mapped from"
@@ -98,9 +104,16 @@ erDiagram
         text description
         int display_order
     }
+    CURRICULUM_VERSIONS {
+        uuid id PK
+        uuid program_id FK
+        text code "2018-Rev3"
+        text description "nullable"
+    }
     CLOS {
         uuid id PK
         uuid course_id FK
+        uuid curriculum_version_id FK
         text code "CLO1.."
         text description
         int display_order
@@ -109,6 +122,7 @@ erDiagram
         uuid id PK
         uuid clo_id FK
         uuid plo_id FK
+        uuid curriculum_version_id FK
         text level_code FK
         uuid pi_id FK "nullable"
         text assessment_method "nullable"
@@ -116,6 +130,7 @@ erDiagram
     COHORTS {
         uuid id PK
         uuid program_id FK
+        uuid curriculum_version_id FK "nullable"
         text code "2022-2025"
         int start_year
         int end_year
@@ -136,6 +151,18 @@ erDiagram
         uuid academic_term_id FK
         text section "nullable"
         text instructor_name "nullable"
+    }
+    LEARNING_PLAN_ENTRIES {
+        uuid id PK
+        uuid course_offering_id FK
+        text week_label "free text, e.g. 1-4"
+        int display_order
+        text topics
+        text lesson_outcome "nullable"
+        text co_labels "nullable, e.g. CO1,CO3"
+        text methodology "nullable"
+        text learning_resources "nullable"
+        text assessment "nullable"
     }
     ENROLLMENTS {
         uuid id PK
@@ -195,22 +222,60 @@ erDiagram
 - **`plos`** and **`performance_indicators`** are scoped per program
   (`UNIQUE(program_id, code)` / `UNIQUE(plo_id, code)`) since PLO/PI numbering restarts
   per program.
-- **`clos`** are scoped per course (`UNIQUE(course_id, code)`), matching the workbook
-  where every course independently defines CLO1–CLO3.
+- **`curriculum_versions`** models a curriculum revision (e.g. "2018 Rev.3", matching
+  how the source BOR curriculum document versions the whole program) as a first-class,
+  program-scoped entity (`UNIQUE(program_id, code)`). It, not `cohorts`, is what
+  `clos` and `clo_plo_mappings` actually belong to — see below for why.
+- **`clos`** are scoped per course and curriculum version
+  (`UNIQUE(course_id, code, curriculum_version_id)`), matching the workbook where every
+  course independently defines CLO1–CLO3, generalized from "per batch" to "per
+  curriculum revision."
 - **`clo_plo_mappings`** is the single source of truth for outcome mapping, and links
   a CLO straight to a PLO (`plo_id` required) — matching the `Mapping` sheet, which
   maps every course's CLOs to all 11 PLOs directly with no PI column. `pi_id` is
-  **nullable**: it's only set once a PLO has been elaborated into specific Performance
-  Indicators (as the `PLO Attainment Evaluation` sheet does — in the source workbook,
-  only for PLO1; the other 10 PLOs have no PIs defined yet). Making `pi_id` required
-  would have made it impossible to import the other 10 PLOs' mappings at all, since
-  their PIs don't exist. `assessment_method` captures the sheet's free-text
-  "Assessment Methods" column, when known.
+  **nullable**: it's only set once a specific CLO/PLO pairing has been refined to name
+  which Performance Indicator it evidences (all 11 PLOs now have PIs defined — see
+  `prisma/seed/seed-performance-indicators.ts`, sourced from the BSCS curriculum
+  document's §6.4 CS01–CS11 — but not every mapping has been tagged with one yet).
+  Making `pi_id` required would make it impossible to record a CLO→PLO mapping before
+  its PI-level refinement is done. `assessment_method` captures the sheet's free-text
+  "Assessment Methods" column, when known. A dedicated CLO–PI mapping tab (separate
+  from the CLO–PLO tab) lets faculty set `pi_id`/`assessment_method` without
+  re-picking the I/P/D level each time.
+- **Why `curriculum_versions` and not `cohorts` owns CLOs/mappings**: CLO/mapping
+  definition work (writing CLOs, mapping them to PLOs/PIs) is independent of whether
+  any batch exists yet or has been assigned to that curriculum — the two workflows run
+  in parallel and converge only when `cohorts.curriculum_version_id` is set (nullable,
+  for exactly this reason). This also lets multiple cohorts admitted under the same
+  curriculum share one version instead of duplicating CLOs when nothing actually
+  changed — duplication (`POST /clos/:id/duplicate`) is now reserved for when the
+  curriculum is genuinely revised.
+
+### Course delivery
+
+- **`course_offerings`** (course + term + section + instructor) is the unit "one
+  faculty member teaching one section in one term" — the same course code can have
+  wildly different learning plans, CO counts, and grading schemes depending on who
+  teaches it and when (confirmed by comparing two real syllabi for the same course
+  code, `CCC181`, taught by different departments). Anything that varies by "which
+  actual class this was" hangs off this table, not off `courses`.
+- **`learning_plan_entries`** is one row per week-block of a specific offering's
+  syllabus (topics, lesson outcome, CO tags, methodology, resources, assessment type).
+  `co_labels` is free text (e.g. `"CO1,CO3"`) rather than an FK to `clos`: `clos` rows
+  are curriculum-version-scoped, and an offering doesn't map cleanly to a single
+  version, so a hard link would force an arbitrary choice. Not yet wired to actual
+  assessment items or score computation — see the Class Record workbook analysis
+  (`bscs/CQI Class Record.xlsx`) for the likely next step: an `assessment_plan` per
+  offering (item → CLO → point total) feeding computed CLO scores, which the current
+  `clo_attainments` upload only accepts pre-computed.
 
 ### People and facts
 
 - **`cohorts`** models "Batch 2022 to 2025" as a first-class, program-scoped entity
   rather than a text label, so reporting can be filtered/joined by cohort.
+  `curriculum_version_id` (nullable) is the only link between a batch's real students
+  and the curriculum they're studying under — the reporting views join through it to
+  find which `clo_plo_mappings` apply to a given student's cohort.
 - **`enrollments`** links a student to a specific `course_offering` (course + term +
   section) rather than directly to a course, so a retake in a later term is a distinct
   record.

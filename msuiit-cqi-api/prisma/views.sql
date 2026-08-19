@@ -7,8 +7,9 @@
 --
 -- This file is the human-readable copy for reference. It is kept in sync
 -- with migrations/<timestamp>_add_reporting_views/migration.sql (and the
--- later migrations/<timestamp>_update_reporting_views_for_cohort_scoped_mapping),
--- which is what actually creates/updates these views in every environment via
+-- later migrations/<timestamp>_update_reporting_views_for_cohort_scoped_mapping
+-- and migrations/<timestamp>_add_curriculum_versions), which is what
+-- actually creates/updates these views in every environment via
 -- `prisma migrate deploy` — no manual psql step needed. If you change the
 -- view definitions, update both files and add a new migration for changes
 -- made after the initial one.
@@ -40,11 +41,14 @@ GROUP BY c.id, c.code, clo.id, clo.code;
 -- by Courses". Joins clo_plo_mappings directly (not via performance
 -- indicators) since a CLO->PLO mapping can exist before any PI is defined.
 --
--- clo_plo_mappings is scoped per cohort (curricula get revised between
--- batches), so each attainment is matched to the mapping that was in effect
--- for the student's own cohort, and the rollup is grouped per (course,
--- cohort, PLO) rather than just (course, PLO) — averaging across cohorts
--- with different mapping weights would mix incompatible schemes.
+-- clo_plo_mappings is scoped per curriculum version, not per cohort
+-- directly (curricula get revised over time, and multiple cohorts can share
+-- a version) -- so each attainment is matched to the mapping in effect for
+-- the version the student's own cohort is assigned to, via
+-- cpm.curriculum_version_id = coh.curriculum_version_id. A cohort with no
+-- version assigned yet simply produces no rows here. The rollup is grouped
+-- per (course, cohort, PLO) rather than just (course, PLO) — averaging
+-- across cohorts on different versions would mix incompatible schemes.
 -- New columns are appended at the end of each SELECT list rather than
 -- inserted among the existing ones: CREATE OR REPLACE VIEW requires
 -- pre-existing columns to keep their name, order, and type.
@@ -65,7 +69,7 @@ JOIN students s              ON s.id = e.student_id
 JOIN cohorts coh             ON coh.id = s.cohort_id
 JOIN course_offerings co    ON co.id = e.course_offering_id
 JOIN courses c               ON c.id = co.course_id
-JOIN clo_plo_mappings cpm    ON cpm.clo_id = clo.id AND cpm.cohort_id = s.cohort_id
+JOIN clo_plo_mappings cpm    ON cpm.clo_id = clo.id AND cpm.curriculum_version_id = coh.curriculum_version_id
 JOIN plos plo                 ON plo.id = cpm.plo_id
 JOIN mapping_levels ml        ON ml.code = cpm.level_code AND ml.program_id = coh.program_id
 GROUP BY c.id, c.code, plo.id, plo.code, coh.id, coh.code;
@@ -73,7 +77,7 @@ GROUP BY c.id, c.code, plo.id, plo.code, coh.id, coh.code;
 -- Weighted rollup of a student's CLO scores (across all their enrollments)
 -- into each PLO. Equivalent to "PLO Attainment by Students". A student
 -- belongs to exactly one cohort, so the mapping join is pinned to that
--- cohort's mapping set.
+-- cohort's assigned curriculum version's mapping set.
 CREATE OR REPLACE VIEW v_plo_attainment_by_student AS
 SELECT
     s.id                                                        AS student_id,
@@ -86,7 +90,8 @@ SELECT
 FROM clo_attainments ca
 JOIN enrollments e             ON e.id = ca.enrollment_id
 JOIN students s                 ON s.id = e.student_id
-JOIN clo_plo_mappings cpm       ON cpm.clo_id = ca.clo_id AND cpm.cohort_id = s.cohort_id
+JOIN cohorts coh                ON coh.id = s.cohort_id
+JOIN clo_plo_mappings cpm       ON cpm.clo_id = ca.clo_id AND cpm.curriculum_version_id = coh.curriculum_version_id
 JOIN plos plo                    ON plo.id = cpm.plo_id
 JOIN mapping_levels ml           ON ml.code = cpm.level_code AND ml.program_id = s.program_id
 GROUP BY s.id, s.student_number, plo.id, plo.code, s.cohort_id;

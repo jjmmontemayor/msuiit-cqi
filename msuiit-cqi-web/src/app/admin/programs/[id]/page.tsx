@@ -8,6 +8,7 @@ import {
   type CohortAdviser,
   type Course,
   type CurriculumCourse,
+  type CurriculumVersion,
   type Faculty,
   type MappingLevel,
   type Plo,
@@ -16,13 +17,15 @@ import {
 import {
   createAndLinkCourse,
   createCohort,
+  createCurriculumVersion,
   createPlo,
+  deleteCurriculumVersion,
   deletePlo,
   linkExistingCourse,
   unlinkCourse,
   updateAttainmentBenchmark,
   updateMappingLevelWeights,
-  updateProgramName,
+  updateProgramIdentity,
 } from '../../actions';
 import { BatchRow } from './batch-row';
 
@@ -49,6 +52,7 @@ export default async function AdminProgramPage({
 
   const [
     cohorts,
+    curriculumVersions,
     plos,
     curriculumCourses,
     allCourses,
@@ -58,6 +62,7 @@ export default async function AdminProgramPage({
     benchmark,
   ] = await Promise.all([
     apiFetch<Cohort[]>(`/cohorts?programId=${program.id}`),
+    apiFetch<CurriculumVersion[]>(`/curriculum-versions?programId=${program.id}`),
     apiFetch<Plo[]>(`/plos?programId=${program.id}`),
     apiFetch<CurriculumCourse[]>(`/curriculum-courses?programId=${program.id}`),
     apiFetch<Course[]>('/courses'),
@@ -79,6 +84,7 @@ export default async function AdminProgramPage({
   const activeFaculty = faculty.filter((f) => f.isActive);
 
   const boundCreateCohort = createCohort.bind(null, program.id);
+  const boundCreateCurriculumVersion = createCurriculumVersion.bind(null, program.id);
   const boundCreatePlo = createPlo.bind(null, program.id);
   const boundLinkExistingCourse = linkExistingCourse.bind(null, program.id);
   const boundCreateAndLinkCourse = createAndLinkCourse.bind(null, program.id);
@@ -121,11 +127,26 @@ export default async function AdminProgramPage({
       </div>
 
       <section className="rounded-md border border-neutral-200 p-4 dark:border-neutral-800">
-        <h2 className="text-lg font-medium">Program Name</h2>
+        <h2 className="text-lg font-medium">Program Name &amp; Code</h2>
+        <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+          Changing the code changes this program&apos;s public URL (
+          <code>/programs/{program.code}</code>) — old links using the
+          previous code will stop resolving.
+        </p>
         <form
-          action={updateProgramName.bind(null, program.id)}
+          action={updateProgramIdentity.bind(null, program.id)}
           className="mt-3 flex flex-wrap items-end gap-3"
         >
+          <label className="text-sm">
+            Code
+            <input
+              name="code"
+              required
+              maxLength={20}
+              defaultValue={program.code}
+              className="mt-1 block w-40 rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            />
+          </label>
           <label className="text-sm">
             Name
             <input
@@ -140,7 +161,7 @@ export default async function AdminProgramPage({
             type="submit"
             className="rounded-md bg-neutral-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"
           >
-            Save Name
+            Save
           </button>
         </form>
       </section>
@@ -176,6 +197,7 @@ export default async function AdminProgramPage({
                   cohort={cohort}
                   advisers={advisers}
                   availableFaculty={availableFaculty}
+                  curriculumVersions={curriculumVersions}
                 />
               );
             })}
@@ -229,6 +251,74 @@ export default async function AdminProgramPage({
               className="rounded-md bg-neutral-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"
             >
               Add Batch
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section>
+        <h2 className="text-lg font-medium">Curriculum Versions</h2>
+        <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+          CLOs and CLO-PLO/PI mappings belong to a curriculum version, not a
+          batch directly — set these up independently of batches, then assign
+          a batch to whichever version it was admitted under (above) whenever
+          that's ready.
+        </p>
+        {curriculumVersions.length === 0 ? (
+          <p className="mt-2 text-sm text-neutral-500">No curriculum versions yet.</p>
+        ) : (
+          <ul className="mt-3 divide-y divide-neutral-200 rounded-md border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
+            {curriculumVersions.map((version) => (
+              <li key={version.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                <div className="text-sm">
+                  <span className="font-medium">{version.code}</span>
+                  {version.description && (
+                    <span className="ml-2 text-neutral-600 dark:text-neutral-400">
+                      {version.description}
+                    </span>
+                  )}
+                </div>
+                <form action={deleteCurriculumVersion.bind(null, program.id, version.id)}>
+                  <button
+                    type="submit"
+                    className="shrink-0 text-sm text-red-600 hover:underline dark:text-red-400"
+                  >
+                    Delete
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <form
+          action={boundCreateCurriculumVersion}
+          className="mt-3 grid gap-3 rounded-md border border-neutral-200 p-4 sm:grid-cols-4 dark:border-neutral-800"
+        >
+          <label className="text-sm">
+            Code
+            <input
+              name="code"
+              required
+              maxLength={20}
+              placeholder="2018-Rev3"
+              className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            />
+          </label>
+          <label className="text-sm sm:col-span-3">
+            Description
+            <input
+              name="description"
+              placeholder="BSCS 2018 Revision 3, with corrections"
+              className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            />
+          </label>
+          <div className="sm:col-span-4">
+            <button
+              type="submit"
+              className="rounded-md bg-neutral-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"
+            >
+              Add Curriculum Version
             </button>
           </div>
         </form>

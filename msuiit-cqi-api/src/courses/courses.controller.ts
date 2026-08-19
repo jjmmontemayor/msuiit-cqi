@@ -25,13 +25,18 @@ export class CoursesController {
   findAll(
     @Query('programId') programId?: string,
     @Query('cohortId') cohortId?: string,
+    @Query('curriculumVersionId') curriculumVersionId?: string,
   ) {
-    return this.coursesService.findAll(programId, cohortId);
+    return this.coursesService.findAll(programId, cohortId, curriculumVersionId);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @Query('cohortId') cohortId?: string) {
-    return this.coursesService.findOne(id, cohortId);
+  findOne(
+    @Param('id') id: string,
+    @Query('cohortId') cohortId?: string,
+    @Query('curriculumVersionId') curriculumVersionId?: string,
+  ) {
+    return this.coursesService.findOne(id, cohortId, curriculumVersionId);
   }
 
   @Patch(':id')

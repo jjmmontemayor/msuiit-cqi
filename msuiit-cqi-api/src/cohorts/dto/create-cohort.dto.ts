@@ -10,6 +10,10 @@ export class CreateCohortDto {
   @IsUUID()
   programId!: string;
 
+  @IsOptional()
+  @IsUUID()
+  curriculumVersionId?: string;
+
   @IsString()
   @MaxLength(20)
   code!: string;

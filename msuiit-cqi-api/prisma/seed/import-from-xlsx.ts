@@ -121,11 +121,26 @@ async function main() {
     create: { programId: program.id, percentage: 70 },
   });
 
+  // CLOs and their PLO/PI mappings are scoped to a curriculum version, not
+  // a cohort directly -- this import creates one version for the batch it's
+  // seeding and assigns the cohort to it, since the source workbook doesn't
+  // distinguish "curriculum revision" from "batch".
+  const curriculumVersion = await prisma.curriculumVersion.upsert({
+    where: { programId_code: { programId: program.id, code: '2022-2025' } },
+    update: {},
+    create: {
+      programId: program.id,
+      code: '2022-2025',
+      description: 'Imported from the source workbook (batch 2022-2025)',
+    },
+  });
+
   const cohort = await prisma.cohort.upsert({
     where: { programId_code: { programId: program.id, code: '2022-2025' } },
     update: {},
     create: {
       programId: program.id,
+      curriculumVersionId: curriculumVersion.id,
       code: '2022-2025',
       startYear: 2022,
       endYear: 2025,
@@ -318,16 +333,16 @@ async function main() {
     const displayOrder = Number(cloCode.replace('CLO', '')) || 0;
     const clo = await prisma.clo.upsert({
       where: {
-        courseId_code_cohortId: {
+        courseId_code_curriculumVersionId: {
           courseId: course.id,
           code: cloCode,
-          cohortId: cohort.id,
+          curriculumVersionId: curriculumVersion.id,
         },
       },
       update: {},
       create: {
         courseId: course.id,
-        cohortId: cohort.id,
+        curriculumVersionId: curriculumVersion.id,
         code: cloCode,
         description: `Placeholder description for ${courseCode} ${cloCode} — update with the actual learning outcome text.`,
         displayOrder,
@@ -359,17 +374,17 @@ async function main() {
 
       await prisma.cloPloMapping.upsert({
         where: {
-          cloId_ploId_cohortId: {
+          cloId_ploId_curriculumVersionId: {
             cloId: clo.id,
             ploId: plo.id,
-            cohortId: cohort.id,
+            curriculumVersionId: curriculumVersion.id,
           },
         },
         update: {},
         create: {
           cloId: clo.id,
           ploId: plo.id,
-          cohortId: cohort.id,
+          curriculumVersionId: curriculumVersion.id,
           levelCode: level,
           piId: matchingPi ? piByCode.get(matchingPi.code)!.id : null,
           assessmentMethod: matchingPi ? PI_ASSESSMENT_METHOD : null,

@@ -12,8 +12,10 @@ import { PerformanceIndicatorsModule } from './performance-indicators/performanc
 import { MappingsModule } from './mappings/mappings.module';
 import { MappingLevelsModule } from './mapping-levels/mapping-levels.module';
 import { CohortsModule } from './cohorts/cohorts.module';
+import { CurriculumVersionsModule } from './curriculum-versions/curriculum-versions.module';
 import { AcademicTermsModule } from './academic-terms/academic-terms.module';
 import { CourseOfferingsModule } from './course-offerings/course-offerings.module';
+import { LearningPlanEntriesModule } from './learning-plan-entries/learning-plan-entries.module';
 import { StudentsModule } from './students/students.module';
 import { FacultyModule } from './faculty/faculty.module';
 import { CohortAdvisersModule } from './cohort-advisers/cohort-advisers.module';
@@ -39,8 +41,10 @@ import { AuthModule } from './auth/auth.module';
     MappingsModule,
     MappingLevelsModule,
     CohortsModule,
+    CurriculumVersionsModule,
     AcademicTermsModule,
     CourseOfferingsModule,
+    LearningPlanEntriesModule,
     StudentsModule,
     FacultyModule,
     CohortAdvisersModule,

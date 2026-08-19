@@ -7,14 +7,17 @@ import { UpdateCurriculumCourseDto } from './dto/update-curriculum-course.dto';
 export class CurriculumCoursesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // CLOs are cohort-scoped; nested course.clos here is only used for
-  // display (e.g. a "N CLOs" count), so it's always narrowed to the most
-  // recent cohort rather than every batch's CLOs merged together.
+  // CLOs are curriculum-version-scoped; nested course.clos here is only used
+  // for display (e.g. a "N CLOs" count), so it's always narrowed to the most
+  // recently created version rather than every version's CLOs merged
+  // together.
   private async latestCloWhere() {
-    const latestCohort = await this.prisma.cohort.findFirst({
-      orderBy: { startYear: 'desc' },
+    const latestVersion = await this.prisma.curriculumVersion.findFirst({
+      orderBy: { createdAt: 'desc' },
     });
-    return latestCohort ? { cohortId: latestCohort.id } : { cohortId: '__none__' };
+    return latestVersion
+      ? { curriculumVersionId: latestVersion.id }
+      : { curriculumVersionId: '__none__' };
   }
 
   async create(dto: CreateCurriculumCourseDto) {

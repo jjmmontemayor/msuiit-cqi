@@ -69,11 +69,18 @@ export interface CurriculumCourse {
 export interface Clo {
   id: string;
   courseId: string;
-  cohortId: string;
+  curriculumVersionId: string;
   code: string;
   description: string;
   displayOrder: number;
   isLocked: boolean;
+}
+
+export interface CurriculumVersion {
+  id: string;
+  programId: string;
+  code: string;
+  description: string | null;
 }
 
 export interface Plo {
@@ -104,6 +111,7 @@ export interface MappingLevel {
 export interface Cohort {
   id: string;
   programId: string;
+  curriculumVersionId: string | null;
   code: string;
   startYear: number;
   endYear: number;
@@ -135,7 +143,7 @@ export interface CloPloMapping {
   id: string;
   cloId: string;
   ploId: string;
-  cohortId: string;
+  curriculumVersionId: string;
   levelCode: 'I' | 'P' | 'D';
   piId: string | null;
   assessmentMethod: string | null;
@@ -216,6 +224,28 @@ export interface AcademicTerm {
   schoolYearEnd: number;
   semester: 'FIRST' | 'SECOND' | 'SUMMER';
   label: string;
+}
+
+export interface CourseOffering {
+  id: string;
+  courseId: string;
+  academicTermId: string;
+  section: string | null;
+  instructorName: string | null;
+  academicTerm: AcademicTerm;
+}
+
+export interface LearningPlanEntry {
+  id: string;
+  courseOfferingId: string;
+  weekLabel: string;
+  displayOrder: number;
+  topics: string;
+  lessonOutcome: string | null;
+  coLabels: string | null;
+  methodology: string | null;
+  learningResources: string | null;
+  assessment: string | null;
 }
 
 export interface AttainmentUploadResult {

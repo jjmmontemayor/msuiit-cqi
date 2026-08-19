@@ -1,6 +1,15 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { apiFetch, ApiError, type AcademicTerm, type Clo, type Course, type Program } from '@/lib/api';
+import {
+  apiFetch,
+  ApiError,
+  type AcademicTerm,
+  type Clo,
+  type Course,
+  type CourseOffering,
+  type LearningPlanEntry,
+  type Program,
+} from '@/lib/api';
 import { DownloadAttainmentTemplate } from './download-attainment-template';
 import { AttainmentUploadForm } from './attainment-upload-form';
 
@@ -32,15 +41,26 @@ async function getCourse(id: string): Promise<CourseWithClos> {
 
 export default async function CourseDetailsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string; courseId: string }>;
+  searchParams: Promise<{ offeringId?: string }>;
 }) {
   const { id, courseId } = await params;
-  const [program, course, academicTerms] = await Promise.all([
+  const { offeringId: offeringIdParam } = await searchParams;
+  const [program, course, academicTerms, offerings] = await Promise.all([
     getProgram(id),
     getCourse(courseId),
     apiFetch<AcademicTerm[]>('/academic-terms'),
+    apiFetch<CourseOffering[]>(`/course-offerings?courseId=${courseId}`),
   ]);
+
+  const selectedOfferingId = offeringIdParam || offerings[0]?.id;
+  const learningPlanEntries = selectedOfferingId
+    ? await apiFetch<LearningPlanEntry[]>(
+        `/learning-plan-entries?courseOfferingId=${selectedOfferingId}`,
+      )
+    : [];
 
   return (
     <div className="space-y-8">
@@ -121,6 +141,85 @@ export default async function CourseDetailsPage({
               </li>
             ))}
           </ul>
+        )}
+      </section>
+
+      <section>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <h2 className="text-lg font-medium">Learning Plan</h2>
+          {offerings.length > 0 && (
+            <form method="get" className="flex items-end gap-2">
+              <label className="text-sm">
+                Offering
+                <select
+                  name="offeringId"
+                  defaultValue={selectedOfferingId}
+                  className="mt-1 block w-64 rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                >
+                  {offerings.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.academicTerm.label}
+                      {o.section ? ` — ${o.section}` : ''}
+                      {o.instructorName ? ` (${o.instructorName})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="submit"
+                className="rounded-md border border-neutral-200 px-3 py-1.5 text-sm hover:border-neutral-400 dark:border-neutral-800 dark:hover:border-neutral-600"
+              >
+                View
+              </button>
+            </form>
+          )}
+        </div>
+
+        {offerings.length === 0 ? (
+          <p className="mt-2 text-sm text-neutral-500">
+            No offerings set up for this course yet.
+          </p>
+        ) : learningPlanEntries.length === 0 ? (
+          <p className="mt-2 text-sm text-neutral-500">
+            No learning plan added for this offering yet.
+          </p>
+        ) : (
+          <div className="mt-3 overflow-x-auto rounded-md border border-neutral-200 dark:border-neutral-800">
+            <table className="min-w-full text-sm">
+              <thead className="bg-neutral-100 dark:bg-neutral-900">
+                <tr>
+                  <th className="px-3 py-2 text-left">Week</th>
+                  <th className="px-3 py-2 text-left">Topics</th>
+                  <th className="px-3 py-2 text-left">Lesson Outcome</th>
+                  <th className="px-3 py-2 text-left">CO</th>
+                  <th className="px-3 py-2 text-left">Methodology</th>
+                  <th className="px-3 py-2 text-left">Resources</th>
+                  <th className="px-3 py-2 text-left">Assessment</th>
+                </tr>
+              </thead>
+              <tbody>
+                {learningPlanEntries.map((entry) => (
+                  <tr key={entry.id} className="border-t border-neutral-200 align-top dark:border-neutral-800">
+                    <td className="whitespace-nowrap px-3 py-2 font-medium">{entry.weekLabel}</td>
+                    <td className="px-3 py-2">{entry.topics}</td>
+                    <td className="px-3 py-2 text-neutral-600 dark:text-neutral-400">
+                      {entry.lessonOutcome}
+                    </td>
+                    <td className="px-3 py-2">{entry.coLabels}</td>
+                    <td className="px-3 py-2 text-neutral-600 dark:text-neutral-400">
+                      {entry.methodology}
+                    </td>
+                    <td className="px-3 py-2 text-neutral-600 dark:text-neutral-400">
+                      {entry.learningResources}
+                    </td>
+                    <td className="px-3 py-2 text-neutral-600 dark:text-neutral-400">
+                      {entry.assessment}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 

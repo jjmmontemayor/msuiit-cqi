@@ -11,7 +11,7 @@ export class CreateCloDto {
   courseId!: string;
 
   @IsUUID()
-  cohortId!: string;
+  curriculumVersionId!: string;
 
   @IsString()
   @MaxLength(20)

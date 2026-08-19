@@ -25,9 +25,9 @@ export class ClosController {
   @Get()
   findAll(
     @Query('courseId') courseId?: string,
-    @Query('cohortId') cohortId?: string,
+    @Query('curriculumVersionId') curriculumVersionId?: string,
   ) {
-    return this.closService.findAll(courseId, cohortId);
+    return this.closService.findAll(courseId, curriculumVersionId);
   }
 
   @Get(':id')
@@ -47,6 +47,6 @@ export class ClosController {
 
   @Post(':id/duplicate')
   duplicate(@Param('id') id: string, @Body() dto: DuplicateCloDto) {
-    return this.closService.duplicateToCohort(id, dto);
+    return this.closService.duplicateToVersion(id, dto);
   }
 }

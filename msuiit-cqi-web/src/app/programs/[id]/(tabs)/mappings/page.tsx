@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { apiFetch, ApiError, type Clo, type Cohort, type CloPloMapping, type Course, type MappingLevel, type Plo, type Program } from '@/lib/api';
+import { apiFetch, ApiError, type Clo, type CurriculumVersion, type CloPloMapping, type Course, type MappingLevel, type Plo, type Program } from '@/lib/api';
 import { buildPloSummary } from '@/lib/mapping-summary';
 import { MappingSummaryTable } from '@/components/mapping-summary-table';
 import { WeightComputationTable } from '@/components/weight-computation-table';
@@ -26,14 +26,14 @@ export default async function MappingsPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ cohortId?: string }>;
+  searchParams: Promise<{ curriculumVersionId?: string }>;
 }) {
   const { id } = await params;
-  const { cohortId: cohortIdParam } = await searchParams;
+  const { curriculumVersionId: versionIdParam } = await searchParams;
   const program = await getProgram(id);
 
-  const [cohorts, plos, mappingLevels] = await Promise.all([
-    apiFetch<Cohort[]>(`/cohorts?programId=${program.id}`),
+  const [curriculumVersions, plos, mappingLevels] = await Promise.all([
+    apiFetch<CurriculumVersion[]>(`/curriculum-versions?programId=${program.id}`),
     apiFetch<Plo[]>(`/plos?programId=${program.id}`),
     apiFetch<MappingLevel[]>(`/mapping-levels?programId=${program.id}`),
   ]);
@@ -42,23 +42,23 @@ export default async function MappingsPage({
     number
   >;
 
-  const selectedCohortId = cohortIdParam || cohorts[0]?.id;
+  const selectedVersionId = versionIdParam || curriculumVersions[0]?.id;
   const [courses, mappings] = await Promise.all([
     apiFetch<CourseWithClos[]>(
-      `/courses?programId=${program.id}${selectedCohortId ? `&cohortId=${selectedCohortId}` : ''}`,
+      `/courses?programId=${program.id}${selectedVersionId ? `&curriculumVersionId=${selectedVersionId}` : ''}`,
     ),
-    selectedCohortId
-      ? apiFetch<CloPloMapping[]>(`/mappings?cohortId=${selectedCohortId}`)
+    selectedVersionId
+      ? apiFetch<CloPloMapping[]>(`/mappings?curriculumVersionId=${selectedVersionId}`)
       : Promise.resolve([] as CloPloMapping[]),
   ]);
 
   const summaryRows = buildPloSummary(plos, courses, mappings);
 
-  if (cohorts.length === 0) {
+  if (curriculumVersions.length === 0) {
     return (
       <p className="text-sm text-neutral-500">
-        No batches set up for this program yet — CLO-PLO mapping is scoped per
-        batch, so{' '}
+        No curriculum versions set up for this program yet — CLO-PLO mapping
+        is scoped per version, so{' '}
         <Link href={`/admin/programs/${program.id}`} className="underline">
           add one in Admin
         </Link>
@@ -75,19 +75,19 @@ export default async function MappingsPage({
           <span className="font-medium text-blue-600 dark:text-blue-400">I = Introduced</span>,{' '}
           <span className="font-medium text-amber-600 dark:text-amber-400">P = Practiced</span>,{' '}
           <span className="font-medium text-emerald-600 dark:text-emerald-400">D = Demonstrated</span>.
-          Each batch has its own mapping.
+          Each curriculum version has its own mapping.
         </p>
         <form method="get" className="flex items-end gap-2">
           <label className="text-sm">
-            Batch
+            Curriculum Version
             <select
-              name="cohortId"
-              defaultValue={selectedCohortId}
+              name="curriculumVersionId"
+              defaultValue={selectedVersionId}
               className="mt-1 block w-48 rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
             >
-              {cohorts.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.code}
+              {curriculumVersions.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.code}
                 </option>
               ))}
             </select>
@@ -114,7 +114,7 @@ export default async function MappingsPage({
           <MappingTable
             programId={program.id}
             programCode={program.code}
-            cohortId={selectedCohortId ?? ''}
+            curriculumVersionId={selectedVersionId ?? ''}
             courses={courses}
             plos={plos}
             mappings={mappings}

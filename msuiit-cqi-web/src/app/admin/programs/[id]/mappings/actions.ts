@@ -5,13 +5,13 @@ import { apiFetch, type Clo, type CloPloMapping } from '@/lib/api';
 
 export async function setMapping(
   programId: string,
-  cohortId: string,
+  curriculumVersionId: string,
   cloId: string,
   ploId: string,
   levelCode: 'I' | 'P' | 'D' | '',
 ) {
   const existing = await apiFetch<CloPloMapping[]>(
-    `/mappings?cloId=${cloId}&ploId=${ploId}&cohortId=${cohortId}`,
+    `/mappings?cloId=${cloId}&ploId=${ploId}&curriculumVersionId=${curriculumVersionId}`,
   );
 
   if (!levelCode) {
@@ -26,7 +26,7 @@ export async function setMapping(
   } else {
     await apiFetch('/mappings', {
       method: 'POST',
-      body: JSON.stringify({ cloId, ploId, cohortId, levelCode }),
+      body: JSON.stringify({ cloId, ploId, curriculumVersionId, levelCode }),
     });
   }
 
@@ -34,26 +34,28 @@ export async function setMapping(
   revalidatePath(`/programs/${programId}/mappings`);
 }
 
-// CLOs (and their mappings) are cohort-scoped, so "copying" from another
-// batch means creating this batch's own version of each CLO the source
-// batch has -- via the same duplicateToCohort path used for versioning a
-// single CLO. It's idempotent: a CLO the target cohort already has (same
-// course + code) is left untouched rather than overwritten.
-export async function copyMappingsFromCohort(
+// CLOs (and their mappings) are curriculum-version-scoped, so "copying" from
+// another version means creating this version's own copy of each CLO the
+// source version has -- via the same duplicateToVersion path used for
+// versioning a single CLO. It's idempotent: a CLO the target version already
+// has (same course + code) is left untouched rather than overwritten.
+export async function copyMappingsFromVersion(
   programId: string,
-  targetCohortId: string,
+  targetCurriculumVersionId: string,
   formData: FormData,
 ) {
-  const sourceCohortId = String(formData.get('sourceCohortId') ?? '');
-  if (!sourceCohortId || sourceCohortId === targetCohortId) return;
+  const sourceCurriculumVersionId = String(formData.get('sourceCurriculumVersionId') ?? '');
+  if (!sourceCurriculumVersionId || sourceCurriculumVersionId === targetCurriculumVersionId) return;
 
-  const sourceClos = await apiFetch<Clo[]>(`/clos?cohortId=${sourceCohortId}`);
+  const sourceClos = await apiFetch<Clo[]>(
+    `/clos?curriculumVersionId=${sourceCurriculumVersionId}`,
+  );
 
   await Promise.all(
     sourceClos.map((clo) =>
       apiFetch(`/clos/${clo.id}/duplicate`, {
         method: 'POST',
-        body: JSON.stringify({ cohortId: targetCohortId }),
+        body: JSON.stringify({ curriculumVersionId: targetCurriculumVersionId }),
       }),
     ),
   );

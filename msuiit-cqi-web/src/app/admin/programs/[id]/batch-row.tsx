@@ -3,22 +3,25 @@
 import { useState } from 'react';
 import {
   addCohortAdviser,
+  assignCohortVersion,
   deleteCohort,
   removeCohortAdviser,
   updateCohort,
 } from '../../actions';
-import type { Cohort, CohortAdviser, Faculty } from '@/lib/api';
+import type { Cohort, CohortAdviser, CurriculumVersion, Faculty } from '@/lib/api';
 
 export function BatchRow({
   programId,
   cohort,
   advisers,
   availableFaculty,
+  curriculumVersions,
 }: {
   programId: string;
   cohort: Cohort;
   advisers: CohortAdviser[];
   availableFaculty: Faculty[];
+  curriculumVersions: CurriculumVersion[];
 }) {
   const [isEditing, setIsEditing] = useState(false);
 
@@ -117,6 +120,30 @@ export function BatchRow({
           </div>
         </div>
       )}
+
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <span className="text-xs text-neutral-500">Curriculum version:</span>
+        <form
+          action={assignCohortVersion.bind(null, programId, cohort.id)}
+          className="flex items-center gap-1"
+        >
+          <select
+            name="curriculumVersionId"
+            defaultValue={cohort.curriculumVersionId ?? ''}
+            className="rounded border border-neutral-300 px-1.5 py-0.5 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+          >
+            <option value="">Unassigned</option>
+            {curriculumVersions.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.code}
+              </option>
+            ))}
+          </select>
+          <button type="submit" className="text-xs underline">
+            Set
+          </button>
+        </form>
+      </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <span className="text-xs text-neutral-500">Advisers:</span>

@@ -10,13 +10,13 @@ const LEVELS: Level[] = ['', 'I', 'P', 'D'];
 
 export function MappingCell({
   programId,
-  cohortId,
+  curriculumVersionId,
   cloId,
   ploId,
   initialLevel,
 }: {
   programId: string;
-  cohortId: string;
+  curriculumVersionId: string;
   cloId: string;
   ploId: string;
   initialLevel: Level;
@@ -32,7 +32,7 @@ export function MappingCell({
         const next = e.target.value as Level;
         setLevel(next);
         startTransition(async () => {
-          await setMapping(programId, cohortId, cloId, ploId, next);
+          await setMapping(programId, curriculumVersionId, cloId, ploId, next);
         });
       }}
       className={`h-7 w-14 rounded border border-neutral-300 text-center text-xs font-medium disabled:opacity-50 dark:border-neutral-700 ${LEVEL_SELECT_CLASSES[level]}`}

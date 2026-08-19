@@ -64,13 +64,14 @@ export async function createProgram(formData: FormData) {
   redirect(`/admin/programs/${program.id}`);
 }
 
-export async function updateProgramName(programId: string, formData: FormData) {
+export async function updateProgramIdentity(programId: string, formData: FormData) {
+  const code = str(formData, 'code');
   const name = str(formData, 'name');
-  if (!name) return;
+  if (!code || !name) return;
 
   await apiFetch(`/programs/${programId}`, {
     method: 'PATCH',
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ code, name }),
   });
 
   revalidatePath(`/admin/programs/${programId}`);
@@ -120,6 +121,48 @@ export async function updateCohort(
 
   revalidatePath(`/admin/programs/${programId}`);
   revalidatePath(`/programs/${programId}`);
+}
+
+export async function assignCohortVersion(
+  programId: string,
+  cohortId: string,
+  formData: FormData,
+) {
+  const curriculumVersionId = str(formData, 'curriculumVersionId');
+
+  await apiFetch(`/cohorts/${cohortId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ curriculumVersionId: curriculumVersionId || null }),
+  });
+
+  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/programs/${programId}`);
+}
+
+export async function createCurriculumVersion(programId: string, formData: FormData) {
+  const code = str(formData, 'code');
+  const description = str(formData, 'description');
+  if (!code) return;
+
+  await apiFetch('/curriculum-versions', {
+    method: 'POST',
+    body: JSON.stringify({
+      programId,
+      code,
+      description: description || undefined,
+    }),
+  });
+
+  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}/courses`);
+  revalidatePath(`/admin/programs/${programId}/mappings`);
+  revalidatePath(`/programs/${programId}/mappings`);
+  revalidatePath(`/programs/${programId}/clo-pi-mapping`);
+}
+
+export async function deleteCurriculumVersion(programId: string, versionId: string) {
+  await apiFetch(`/curriculum-versions/${versionId}`, { method: 'DELETE' });
+  revalidatePath(`/admin/programs/${programId}`);
 }
 
 export async function deleteCohort(programId: string, cohortId: string) {
@@ -254,6 +297,64 @@ export async function updateCourseDetails(
   revalidatePath(`/admin/programs/${programId}`);
 }
 
+export async function createCourseOffering(
+  programId: string,
+  courseId: string,
+  formData: FormData,
+) {
+  const academicTermId = str(formData, 'academicTermId');
+  if (!academicTermId) return;
+
+  await apiFetch('/course-offerings', {
+    method: 'POST',
+    body: JSON.stringify({
+      courseId,
+      academicTermId,
+      section: str(formData, 'section') || undefined,
+      instructorName: str(formData, 'instructorName') || undefined,
+    }),
+  });
+
+  revalidateCoursePaths(programId, courseId);
+}
+
+export async function createLearningPlanEntry(
+  programId: string,
+  courseId: string,
+  courseOfferingId: string,
+  formData: FormData,
+) {
+  const weekLabel = str(formData, 'weekLabel');
+  const topics = str(formData, 'topics');
+  if (!weekLabel || !topics) return;
+
+  await apiFetch('/learning-plan-entries', {
+    method: 'POST',
+    body: JSON.stringify({
+      courseOfferingId,
+      weekLabel,
+      topics,
+      displayOrder: optInt(formData, 'displayOrder'),
+      lessonOutcome: str(formData, 'lessonOutcome') || undefined,
+      coLabels: str(formData, 'coLabels') || undefined,
+      methodology: str(formData, 'methodology') || undefined,
+      learningResources: str(formData, 'learningResources') || undefined,
+      assessment: str(formData, 'assessment') || undefined,
+    }),
+  });
+
+  revalidateCoursePaths(programId, courseId);
+}
+
+export async function deleteLearningPlanEntry(
+  programId: string,
+  courseId: string,
+  entryId: string,
+) {
+  await apiFetch(`/learning-plan-entries/${entryId}`, { method: 'DELETE' });
+  revalidateCoursePaths(programId, courseId);
+}
+
 function revalidateCoursePaths(programId: string, courseId: string) {
   revalidatePath(`/admin/programs/${programId}/courses/${courseId}`);
   revalidatePath(`/admin/programs/${programId}`);
@@ -265,13 +366,13 @@ function revalidateCoursePaths(programId: string, courseId: string) {
 export async function createClo(
   programId: string,
   courseId: string,
-  cohortId: string,
+  curriculumVersionId: string,
   formData: FormData,
 ) {
   const description = str(formData, 'description');
 
   const existing = await apiFetch<Clo[]>(
-    `/clos?courseId=${courseId}&cohortId=${cohortId}`,
+    `/clos?courseId=${courseId}&curriculumVersionId=${curriculumVersionId}`,
   );
   const nextNumber =
     1 +
@@ -285,7 +386,7 @@ export async function createClo(
     method: 'POST',
     body: JSON.stringify({
       courseId,
-      cohortId,
+      curriculumVersionId,
       code,
       description,
       displayOrder: optInt(formData, 'displayOrder') ?? nextNumber,
@@ -326,18 +427,18 @@ export async function setCloLock(
   revalidateCoursePaths(programId, courseId);
 }
 
-export async function duplicateCloToCohort(
+export async function duplicateCloToVersion(
   programId: string,
   courseId: string,
   cloId: string,
   formData: FormData,
 ) {
-  const cohortId = str(formData, 'targetCohortId');
-  if (!cohortId) return;
+  const curriculumVersionId = str(formData, 'targetCurriculumVersionId');
+  if (!curriculumVersionId) return;
 
   await apiFetch(`/clos/${cloId}/duplicate`, {
     method: 'POST',
-    body: JSON.stringify({ cohortId }),
+    body: JSON.stringify({ curriculumVersionId }),
   });
 
   revalidateCoursePaths(programId, courseId);

@@ -142,10 +142,11 @@ export class AttainmentUploadsService {
         offeringByCourseId.set(course.id, offering);
       }
 
-      // Cache resolved CLOs per (courseId, code) -- prefer the cohort the
-      // student belongs to; fall back to the most recent cohort's version
-      // of that CLO when the student has no cohort (out-of-program) or
-      // that cohort has no CLO of this code.
+      // Cache resolved CLOs per (courseId, code) -- prefer the curriculum
+      // version the student's cohort is assigned to; fall back to the most
+      // recently created version's CLO of that code when the student has no
+      // cohort (out-of-program), that cohort has no version assigned yet, or
+      // that version has no CLO of this code.
       const cloCache = new Map<string, { id: string } | null>();
       async function resolveClo(
         courseId: string,
@@ -157,14 +158,23 @@ export class AttainmentUploadsService {
 
         let clo: { id: string } | null = null;
         if (cohortId) {
-          clo = await tx.clo.findUnique({
-            where: { courseId_code_cohortId: { courseId, code, cohortId } },
-          });
+          const cohort = await tx.cohort.findUnique({ where: { id: cohortId } });
+          if (cohort?.curriculumVersionId) {
+            clo = await tx.clo.findUnique({
+              where: {
+                courseId_code_curriculumVersionId: {
+                  courseId,
+                  code,
+                  curriculumVersionId: cohort.curriculumVersionId,
+                },
+              },
+            });
+          }
         }
         if (!clo) {
           clo = await tx.clo.findFirst({
             where: { courseId, code },
-            orderBy: { cohort: { startYear: 'desc' } },
+            orderBy: { curriculumVersion: { createdAt: 'desc' } },
           });
         }
         cloCache.set(cacheKey, clo);

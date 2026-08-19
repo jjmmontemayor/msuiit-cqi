@@ -1,8 +1,8 @@
-# MSU-IIT CQI
+# MSU-IIT PACE
 
-Web application for MSU-IIT Program Assessment and Evaluation (Continuous Quality
-Improvement): mapping Course Learning Outcomes (CLOs) to Program Learning Outcomes
-(PLOs), recording student CLO attainment, and reporting PLO attainment by course and
+**P**rogram **A**ssessment & **C**ontinuous **E**valuation. Web application for
+mapping Course Learning Outcomes (CLOs) to Program Learning Outcomes (PLOs),
+recording student CLO attainment, and reporting PLO attainment by course and
 by student. Replaces the manually-maintained "Program Assessment and Evaluation (by
 Courses and Students) CLO to PLO" workbook (kept for reference in
 `docs/source-data/`).

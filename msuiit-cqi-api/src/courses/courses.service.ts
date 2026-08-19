@@ -11,24 +11,43 @@ export class CoursesService {
     return this.prisma.course.create({ data: dto });
   }
 
-  // CLOs are cohort-scoped (a course can have a different CLO set per
-  // batch). Callers that care which batch they're looking at pass
-  // cohortId explicitly (the mapping pages, the admin CLO editor); callers
-  // that don't (report pages, the public course view) get the most recent
-  // cohort's CLOs by default so they still see a single coherent set
-  // instead of every batch's CLOs merged together.
-  private async resolveCloWhere(cohortId?: string) {
-    if (cohortId) {
-      return { cohortId };
+  // CLOs are curriculum-version-scoped (a course can have a different CLO
+  // set per curriculum revision). Callers that are editing curriculum
+  // definition (the mapping pages, the admin CLO editor) pass
+  // curriculumVersionId directly. Callers that only know a cohort/batch
+  // (report pages, the public course view) pass cohortId instead, which is
+  // resolved to that cohort's assigned version -- a cohort with no version
+  // assigned yet has no CLOs to show. With neither given, falls back to the
+  // most recently created curriculum version so there's still a single
+  // coherent set instead of every version's CLOs merged together.
+  private async resolveCloWhere(params: {
+    curriculumVersionId?: string;
+    cohortId?: string;
+  }) {
+    let curriculumVersionId = params.curriculumVersionId;
+    if (!curriculumVersionId && params.cohortId) {
+      const cohort = await this.prisma.cohort.findUnique({
+        where: { id: params.cohortId },
+      });
+      curriculumVersionId = cohort?.curriculumVersionId ?? '__none__';
     }
-    const latestCohort = await this.prisma.cohort.findFirst({
-      orderBy: { startYear: 'desc' },
+    if (curriculumVersionId) {
+      return { curriculumVersionId };
+    }
+    const latestVersion = await this.prisma.curriculumVersion.findFirst({
+      orderBy: { createdAt: 'desc' },
     });
-    return latestCohort ? { cohortId: latestCohort.id } : { cohortId: '__none__' };
+    return latestVersion
+      ? { curriculumVersionId: latestVersion.id }
+      : { curriculumVersionId: '__none__' };
   }
 
-  async findAll(programId?: string, cohortId?: string) {
-    const cloWhere = await this.resolveCloWhere(cohortId);
+  async findAll(
+    programId?: string,
+    cohortId?: string,
+    curriculumVersionId?: string,
+  ) {
+    const cloWhere = await this.resolveCloWhere({ curriculumVersionId, cohortId });
     return this.prisma.course.findMany({
       where: programId
         ? { curriculumCourses: { some: { programId } } }
@@ -38,8 +57,8 @@ export class CoursesService {
     });
   }
 
-  async findOne(id: string, cohortId?: string) {
-    const cloWhere = await this.resolveCloWhere(cohortId);
+  async findOne(id: string, cohortId?: string, curriculumVersionId?: string) {
+    const cloWhere = await this.resolveCloWhere({ curriculumVersionId, cohortId });
     const course = await this.prisma.course.findUnique({
       where: { id },
       include: { clos: { where: cloWhere, orderBy: { displayOrder: 'asc' } } },

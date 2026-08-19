@@ -15,13 +15,13 @@ export class MappingsService {
     cloId?: string;
     ploId?: string;
     courseId?: string;
-    cohortId?: string;
+    curriculumVersionId?: string;
   }) {
     return this.prisma.cloPloMapping.findMany({
       where: {
         cloId: params.cloId,
         ploId: params.ploId,
-        cohortId: params.cohortId,
+        curriculumVersionId: params.curriculumVersionId,
         clo: params.courseId ? { courseId: params.courseId } : undefined,
       },
       include: { pi: true },

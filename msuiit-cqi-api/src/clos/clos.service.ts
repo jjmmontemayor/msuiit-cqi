@@ -16,11 +16,11 @@ export class ClosService {
     return this.prisma.clo.create({ data: dto });
   }
 
-  findAll(courseId?: string, cohortId?: string) {
+  findAll(courseId?: string, curriculumVersionId?: string) {
     return this.prisma.clo.findMany({
       where: {
         ...(courseId ? { courseId } : {}),
-        ...(cohortId ? { cohortId } : {}),
+        ...(curriculumVersionId ? { curriculumVersionId } : {}),
       },
       orderBy: [{ courseId: 'asc' }, { displayOrder: 'asc' }],
     });
@@ -43,7 +43,7 @@ export class ClosService {
 
     if (existing.isLocked && !isUnlockOnly) {
       throw new ForbiddenException(
-        'This CLO is locked. Unlock it first, or create a new version for another batch.',
+        'This CLO is locked. Unlock it first, or create a new version for another curriculum version.',
       );
     }
 
@@ -60,20 +60,21 @@ export class ClosService {
     return this.prisma.clo.delete({ where: { id } });
   }
 
-  // "Save a version for another batch": copies this CLO's text and its
-  // current CLO-PLO mappings into a new CLO row under the target cohort,
-  // leaving the source CLO (and its mappings/attainments) untouched. Idempotent
-  // per (courseId, code, cohortId) -- calling it again for a target that
-  // already has this CLO just returns the existing version.
-  async duplicateToCohort(id: string, dto: DuplicateCloDto) {
+  // "Save a version for another curriculum version": copies this CLO's text
+  // and its current CLO-PLO mappings into a new CLO row under the target
+  // curriculum version, leaving the source CLO (and its mappings/attainments)
+  // untouched. Idempotent per (courseId, code, curriculumVersionId) --
+  // calling it again for a target that already has this CLO just returns the
+  // existing version.
+  async duplicateToVersion(id: string, dto: DuplicateCloDto) {
     const source = await this.findOne(id);
 
     const existingInTarget = await this.prisma.clo.findUnique({
       where: {
-        courseId_code_cohortId: {
+        courseId_code_curriculumVersionId: {
           courseId: source.courseId,
           code: source.code,
-          cohortId: dto.cohortId,
+          curriculumVersionId: dto.curriculumVersionId,
         },
       },
     });
@@ -89,7 +90,7 @@ export class ClosService {
       const created = await tx.clo.create({
         data: {
           courseId: source.courseId,
-          cohortId: dto.cohortId,
+          curriculumVersionId: dto.curriculumVersionId,
           code: source.code,
           description: source.description,
           displayOrder: source.displayOrder,
@@ -102,7 +103,7 @@ export class ClosService {
           data: sourceMappings.map((m) => ({
             cloId: created.id,
             ploId: m.ploId,
-            cohortId: dto.cohortId,
+            curriculumVersionId: dto.curriculumVersionId,
             levelCode: m.levelCode,
             piId: m.piId,
             assessmentMethod: m.assessmentMethod,

@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'MSU-IIT CQI',
-  description: 'Program Assessment and Evaluation — CLO to PLO attainment tracking',
+  title: 'MSU-IIT PACE',
+  description: 'Program Assessment & Continuous Evaluation — CLO to PLO attainment tracking',
 };
 
 export default function RootLayout({

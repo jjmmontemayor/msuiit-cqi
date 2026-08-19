@@ -18,7 +18,10 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold">Program Assessment &amp; Evaluation</h1>
+        <h1 className="text-2xl font-semibold">MSU-IIT PACE</h1>
+        <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+          Program Assessment &amp; Continuous Evaluation
+        </p>
       </div>
 
       {error && (

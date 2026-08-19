@@ -26,9 +26,9 @@ export class MappingsController {
     @Query('cloId') cloId?: string,
     @Query('ploId') ploId?: string,
     @Query('courseId') courseId?: string,
-    @Query('cohortId') cohortId?: string,
+    @Query('curriculumVersionId') curriculumVersionId?: string,
   ) {
-    return this.mappingsService.findAll({ cloId, ploId, courseId, cohortId });
+    return this.mappingsService.findAll({ cloId, ploId, courseId, curriculumVersionId });
   }
 
   @Get(':id')

@@ -44,14 +44,14 @@ function CheckIcon() {
 export function MappingTable({
   programId,
   programCode,
-  cohortId,
+  curriculumVersionId,
   courses,
   plos,
   mappings,
 }: {
   programId: string;
   programCode: string;
-  cohortId: string;
+  curriculumVersionId: string;
   courses: CourseWithClos[];
   plos: Plo[];
   mappings: CloPloMapping[];
@@ -141,7 +141,7 @@ export function MappingTable({
                     {isEditing ? (
                       <MappingCell
                         programId={programId}
-                        cohortId={cohortId}
+                        curriculumVersionId={curriculumVersionId}
                         cloId={clo.id}
                         ploId={plo.id}
                         initialLevel={mapping?.levelCode ?? ''}
