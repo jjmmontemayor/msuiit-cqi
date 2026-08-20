@@ -18,8 +18,10 @@ import {
   createAndLinkCourse,
   createCohort,
   createCurriculumVersion,
+  createMappingLevel,
   createPlo,
   deleteCurriculumVersion,
+  deleteMappingLevel,
   linkExistingCourse,
   setPloAssessmentTarget,
   unlinkCourse,
@@ -45,10 +47,13 @@ async function getProgram(id: string): Promise<Program> {
 
 export default async function AdminProgramPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ mappingLevelError?: string }>;
 }) {
   const { id } = await params;
+  const { mappingLevelError } = await searchParams;
   const program = await getProgram(id);
 
   const [
@@ -326,26 +331,52 @@ export default async function AdminProgramPage({
       </section>
 
       <section className="rounded-md border border-neutral-200 p-4 dark:border-neutral-800">
-        <h2 className="text-lg font-medium">Mapping Level Weights &amp; Codes</h2>
+        <h2 className="text-lg font-medium">Mapping Levels</h2>
         <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-          Used to compute weighted PLO/CLO attainment from the I/P/D mapping
-          levels — changing weights affects every attainment report and the
-          CLO-PLO weight computation table immediately. The display code is
-          what shows in mapping badges/selects (defaults to I/P/D, but can be
-          renamed per program).
+          Used to compute weighted PLO/CLO attainment — changing a weight
+          affects every attainment report and the CLO-PLO weight computation
+          table immediately. Add, rename, or remove levels freely; a level
+          still in use by an existing CLO-PLO/CLO-PI mapping can&apos;t be
+          deleted. The display code is what shows in mapping badges/selects
+          (defaults to the code, but can be renamed per program).
         </p>
+
+        {mappingLevelError && (
+          <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400">
+            {mappingLevelError}
+          </p>
+        )}
+
         <form
           action={updateMappingLevelWeights.bind(null, program.id)}
-          className="mt-3 flex flex-wrap items-end gap-4"
+          className="mt-3 space-y-3"
         >
           {mappingLevels.map((level) => (
-            <div key={level.code} className="flex items-end gap-2">
+            <div key={level.id} className="flex flex-wrap items-end gap-3">
               <label className="text-sm">
-                {level.label} ({level.code})
-                <br />
+                Code
+                <input
+                  name={`code_${level.id}`}
+                  required
+                  maxLength={20}
+                  defaultValue={level.code}
+                  className="mt-1 block w-20 rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                />
+              </label>
+              <label className="text-sm">
+                Description
+                <input
+                  name={`label_${level.id}`}
+                  required
+                  maxLength={50}
+                  defaultValue={level.label}
+                  className="mt-1 block w-40 rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                />
+              </label>
+              <label className="text-sm">
                 Display code
                 <input
-                  name={`displayCode_${level.code}`}
+                  name={`displayCode_${level.id}`}
                   required
                   maxLength={10}
                   defaultValue={level.displayCode}
@@ -355,7 +386,7 @@ export default async function AdminProgramPage({
               <label className="text-sm">
                 Weight
                 <input
-                  name={`weight_${level.code}`}
+                  name={`weight_${level.id}`}
                   type="number"
                   min={1}
                   required
@@ -363,6 +394,13 @@ export default async function AdminProgramPage({
                   className="mt-1 block w-20 rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
                 />
               </label>
+              <button
+                type="submit"
+                formAction={deleteMappingLevel.bind(null, program.id, level.id)}
+                className="pb-1.5 text-sm text-red-600 hover:underline dark:text-red-400"
+              >
+                Delete
+              </button>
             </div>
           ))}
           <button
@@ -370,6 +408,58 @@ export default async function AdminProgramPage({
             className="rounded-md bg-neutral-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"
           >
             Save
+          </button>
+        </form>
+
+        <form
+          action={createMappingLevel.bind(null, program.id)}
+          className="mt-4 flex flex-wrap items-end gap-3 border-t border-neutral-200 pt-4 dark:border-neutral-800"
+        >
+          <label className="text-sm">
+            Code
+            <input
+              name="code"
+              required
+              maxLength={20}
+              placeholder="1"
+              className="mt-1 block w-20 rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            />
+          </label>
+          <label className="text-sm">
+            Description
+            <input
+              name="label"
+              required
+              maxLength={50}
+              placeholder="Introduced"
+              className="mt-1 block w-40 rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            />
+          </label>
+          <label className="text-sm">
+            Display code (optional)
+            <input
+              name="displayCode"
+              maxLength={10}
+              placeholder="defaults to code"
+              className="mt-1 block w-32 rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            />
+          </label>
+          <label className="text-sm">
+            Weight
+            <input
+              name="weight"
+              type="number"
+              min={1}
+              required
+              placeholder="1"
+              className="mt-1 block w-20 rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            />
+          </label>
+          <button
+            type="submit"
+            className="rounded-md bg-neutral-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"
+          >
+            Add Mapping Level
           </button>
         </form>
       </section>

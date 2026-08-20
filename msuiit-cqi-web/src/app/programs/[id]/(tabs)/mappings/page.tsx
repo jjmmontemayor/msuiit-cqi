@@ -1,10 +1,12 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { apiFetch, ApiError, buildDisplayCodes, type Clo, type CurriculumCourse, type CurriculumVersion, type CloPloMapping, type Course, type MappingLevel, type Plo, type Program } from '@/lib/api';
+import { apiFetch, ApiError, type Clo, type CurriculumCourse, type CurriculumVersion, type CloPloMapping, type Course, type MappingLevel, type Plo, type Program } from '@/lib/api';
 import { buildPloSummary } from '@/lib/mapping-summary';
-import { LEVEL_TEXT_CLASSES } from '@/lib/mapping-level-colors';
+import { buildLevelColors } from '@/lib/mapping-level-colors';
 import { MappingSummaryTable } from '@/components/mapping-summary-table';
 import { WeightComputationTable } from '@/components/weight-computation-table';
+import { AutoSubmitCheckbox } from '@/components/auto-submit-checkbox';
+import { ExpandAllCheckbox } from '@/components/expand-all-checkbox';
 import { MappingTable } from './mapping-table';
 
 export const dynamic = 'force-dynamic';
@@ -39,11 +41,7 @@ export default async function MappingsPage({
     apiFetch<MappingLevel[]>(`/mapping-levels?programId=${program.id}`),
     apiFetch<CurriculumCourse[]>(`/curriculum-courses?programId=${program.id}`),
   ]);
-  const weights = Object.fromEntries(mappingLevels.map((l) => [l.code, l.weight])) as Record<
-    'I' | 'P' | 'D',
-    number
-  >;
-  const displayCodes = buildDisplayCodes(mappingLevels);
+  const levelColors = buildLevelColors(mappingLevels);
   const ploAssessmentCourseIds = curriculumCourses
     .filter((cc) => cc.isPloAssessmentTarget)
     .map((cc) => cc.courseId);
@@ -83,8 +81,8 @@ export default async function MappingsPage({
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
           Mapping level per course learning outcome:{' '}
           {mappingLevels.map((level) => (
-            <span key={level.code}>
-              <span className={`font-medium ${LEVEL_TEXT_CLASSES[level.code]}`}>
+            <span key={level.id}>
+              <span className={`font-medium ${levelColors[level.id]?.text ?? ''}`}>
                 {level.displayCode} = {level.label}
               </span>
               {', '}
@@ -107,16 +105,12 @@ export default async function MappingsPage({
               ))}
             </select>
           </label>
-          <label className="flex items-center gap-1.5 pb-1.5 text-sm">
-            <input
-              type="checkbox"
-              name="onlyPloAssessment"
-              value="1"
-              defaultChecked={showOnlyPloAssessment}
-              className="rounded border-neutral-300 dark:border-neutral-700"
-            />
-            Only PLO assessment courses
-          </label>
+          <AutoSubmitCheckbox
+            name="onlyPloAssessment"
+            value="1"
+            defaultChecked={showOnlyPloAssessment}
+            label="Only PLO assessment courses"
+          />
           <button
             type="submit"
             className="rounded-md border border-neutral-200 px-3 py-1.5 text-sm hover:border-neutral-400 dark:border-neutral-800 dark:hover:border-neutral-600"
@@ -135,29 +129,33 @@ export default async function MappingsPage({
           .
         </p>
       ) : (
-        <div className="max-h-[70vh] overflow-auto rounded-md border border-neutral-200 dark:border-neutral-800">
-          <MappingTable
-            programId={program.id}
-            programCode={program.code}
-            curriculumVersionId={selectedVersionId ?? ''}
-            courses={courses}
-            plos={plos}
-            mappings={mappings}
-            ploAssessmentCourseIds={ploAssessmentCourseIds}
-            displayCodes={displayCodes}
-          />
+        <div className="clo-expand-scope space-y-2">
+          <ExpandAllCheckbox />
+          <div className="max-h-[70vh] overflow-auto rounded-md border border-neutral-200 dark:border-neutral-800">
+            <MappingTable
+              programId={program.id}
+              programCode={program.code}
+              curriculumVersionId={selectedVersionId ?? ''}
+              courses={courses}
+              plos={plos}
+              mappings={mappings}
+              ploAssessmentCourseIds={ploAssessmentCourseIds}
+              mappingLevels={mappingLevels}
+              levelColors={levelColors}
+            />
+          </div>
         </div>
       )}
 
       {plos.length > 0 && (
         <div>
-          <h2 className="text-lg font-medium">Summary — I/P/D count per PLO</h2>
+          <h2 className="text-lg font-medium">Summary — mapping level count per PLO</h2>
           <p className="mt-1 text-sm text-neutral-500">
             Click a column header to sort, or a row to see which courses contribute
             to its counts.
           </p>
           <div className="mt-3">
-            <MappingSummaryTable rows={summaryRows} displayCodes={displayCodes} />
+            <MappingSummaryTable rows={summaryRows} mappingLevels={mappingLevels} levelColors={levelColors} />
           </div>
         </div>
       )}
@@ -184,13 +182,19 @@ export default async function MappingsPage({
             </Link>
           </div>
           <p className="mt-1 text-sm text-neutral-500">
-            Each mapping level contributes its configured weight ({displayCodes.I} = {weights.I}
-            , {displayCodes.P} = {weights.P}, {displayCodes.D} = {weights.D}) toward a PLO&apos;s weighted
-            total — the same weights used to compute PLO attainment. Click a
-            row to see the subtotal per course.
+            Each mapping level contributes its configured weight (
+            {mappingLevels.map((level, i) => (
+              <span key={level.id}>
+                {i > 0 && ', '}
+                {level.displayCode} = {level.weight}
+              </span>
+            ))}
+            ) toward a PLO&apos;s weighted total — the same weights used to
+            compute PLO attainment. Click a row to see the subtotal per
+            course.
           </p>
           <div className="mt-3">
-            <WeightComputationTable rows={summaryRows} weights={weights} displayCodes={displayCodes} />
+            <WeightComputationTable rows={summaryRows} mappingLevels={mappingLevels} />
           </div>
         </div>
       )}

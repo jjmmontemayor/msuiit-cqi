@@ -11,7 +11,11 @@ export class CloPiMappingsService {
     return this.prisma.cloPiMapping.create({ data: dto });
   }
 
-  findAll(params: { cloId?: string; piId?: string; curriculumVersionId?: string }) {
+  findAll(params: {
+    cloId?: string;
+    piId?: string;
+    curriculumVersionId?: string;
+  }) {
     return this.prisma.cloPiMapping.findMany({
       where: {
         cloId: params.cloId,
@@ -22,7 +26,9 @@ export class CloPiMappingsService {
   }
 
   async findOne(id: string) {
-    const mapping = await this.prisma.cloPiMapping.findUnique({ where: { id } });
+    const mapping = await this.prisma.cloPiMapping.findUnique({
+      where: { id },
+    });
     if (!mapping) {
       throw new NotFoundException(`CLO-PI mapping ${id} not found`);
     }

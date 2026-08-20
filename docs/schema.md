@@ -72,7 +72,10 @@ erDiagram
         text description
     }
     MAPPING_LEVELS {
-        text code PK "I | P | D"
+        uuid id PK
+        uuid program_id FK
+        text code "any short label, e.g. I | P | D | 1"
+        text display_code
         text label
         int weight
     }
@@ -127,14 +130,14 @@ erDiagram
         uuid clo_id FK
         uuid plo_id FK
         uuid curriculum_version_id FK
-        text level_code FK
+        uuid mapping_level_id FK
     }
     CLO_PI_MAPPINGS {
         uuid id PK
         uuid clo_id FK
         uuid pi_id FK
         uuid curriculum_version_id FK
-        text level_code FK
+        uuid mapping_level_id FK
         text assessment_method "nullable"
     }
     COHORTS {
@@ -221,9 +224,14 @@ erDiagram
   is the join that puts a course into a specific program's curriculum, carrying the
   "Elective N" slot label from the workbook (`elective_group`) so an elective slot's
   chosen course can change between curriculum revisions without altering history.
-- **`mapping_levels`** seeds exactly three rows (`I`/1, `P`/2, `D`/3), replacing the
-  `MapWeight` sheet. Because it's a lookup joined at query time, changing a weighting
-  scheme later doesn't require rewriting historical mapping data.
+- **`mapping_levels`** seeds three rows (`I`/1, `P`/2, `D`/3) per program by default,
+  replacing the `MapWeight` sheet, but is fully admin-managed (`UNIQUE(program_id,
+  code)`) — levels can be added, renamed, or removed per program, not fixed to I/P/D.
+  Mappings reference a level by `mapping_level_id` (its row id), not by `code`, so
+  renaming or reordering levels never touches mapping data; deleting a level still in
+  use by `clo_plo_mappings`/`clo_pi_mappings` is rejected (`ON DELETE RESTRICT`).
+  Because it's a lookup joined at query time, changing a weighting scheme later
+  doesn't require rewriting historical mapping data.
 - **`academic_terms`** exists for real record-keeping (which semester a course was
   offered) even though the source workbook aggregates by batch only.
 
@@ -248,11 +256,12 @@ erDiagram
   which maps every course's CLOs to all 11 PLOs directly with no PI column.
 - **`clo_pi_mappings`** is the PI-level refinement, kept as its own table (not a nullable
   `pi_id`/`assessment_method` pair on `clo_plo_mappings`) because a single CLO can
-  evidence more than one PI within the same PLO, each at a potentially different I/P/D
-  level — a `UNIQUE(clo_id, plo_id, curriculum_version_id)` mapping can't represent that.
+  evidence more than one PI within the same PLO, each at a potentially different level
+  — a `UNIQUE(clo_id, plo_id, curriculum_version_id)` mapping can't represent that.
   `clo_pi_mappings` is keyed `UNIQUE(clo_id, pi_id, curriculum_version_id)` instead, so
-  each (CLO, PI) pair carries its own `level_code` and free-text `assessment_method`
-  (the sheet's "Assessment Methods" column, when known). The CLO-PI mapping tab
+  each (CLO, PI) pair carries its own `mapping_level_id` and free-text
+  `assessment_method` (the sheet's "Assessment Methods" column, when known). The
+  CLO-PI mapping tab
   (separate from the CLO-PLO tab) only lets a PI's level be set once the CLO already
   maps to that PI's PLO in `clo_plo_mappings` — PI-level refinement follows, not
   replaces, the primary PLO-level mapping. PI definitions themselves (all 11 PLOs' PIs

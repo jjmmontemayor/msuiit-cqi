@@ -8,21 +8,21 @@ export async function setCloPiMapping(
   curriculumVersionId: string,
   cloId: string,
   piId: string,
-  levelCode: 'I' | 'P' | 'D' | '',
+  mappingLevelId: string,
   assessmentMethod: string,
 ) {
   const existing = await apiFetch<CloPiMapping[]>(
     `/clo-pi-mappings?cloId=${cloId}&piId=${piId}&curriculumVersionId=${curriculumVersionId}`,
   );
 
-  if (!levelCode) {
+  if (!mappingLevelId) {
     if (existing[0]) {
       await apiFetch(`/clo-pi-mappings/${existing[0].id}`, { method: 'DELETE' });
     }
   } else if (existing[0]) {
     await apiFetch(`/clo-pi-mappings/${existing[0].id}`, {
       method: 'PATCH',
-      body: JSON.stringify({ levelCode, assessmentMethod: assessmentMethod || undefined }),
+      body: JSON.stringify({ mappingLevelId, assessmentMethod: assessmentMethod || undefined }),
     });
   } else {
     await apiFetch('/clo-pi-mappings', {
@@ -31,7 +31,7 @@ export async function setCloPiMapping(
         cloId,
         piId,
         curriculumVersionId,
-        levelCode,
+        mappingLevelId,
         assessmentMethod: assessmentMethod || undefined,
       }),
     });

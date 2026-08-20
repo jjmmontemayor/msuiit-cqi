@@ -4,8 +4,9 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { MappingCell } from '../../../../admin/programs/[id]/mappings/mapping-cell';
 import { CloTextCell } from './clo-text-cell';
-import { LEVEL_BADGE_CLASSES } from '@/lib/mapping-level-colors';
-import type { Clo, CloPloMapping, Course, DisplayCodes, Plo } from '@/lib/api';
+import { ClampableText } from '@/components/clampable-text';
+import type { LevelColorsById } from '@/lib/mapping-level-colors';
+import { buildLevelsById, type Clo, type CloPloMapping, type Course, type MappingLevel, type Plo } from '@/lib/api';
 
 type CourseWithClos = Course & { clos: Clo[] };
 
@@ -49,7 +50,8 @@ export function MappingTable({
   plos,
   mappings,
   ploAssessmentCourseIds,
-  displayCodes,
+  mappingLevels,
+  levelColors,
 }: {
   programId: string;
   programCode: string;
@@ -58,9 +60,11 @@ export function MappingTable({
   plos: Plo[];
   mappings: CloPloMapping[];
   ploAssessmentCourseIds: string[];
-  displayCodes: DisplayCodes;
+  mappingLevels: MappingLevel[];
+  levelColors: LevelColorsById;
 }) {
   const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
+  const levelsById = buildLevelsById(mappingLevels);
 
   const levelByCloAndPlo = new Map<string, CloPloMapping>();
   for (const m of mappings) {
@@ -141,9 +145,10 @@ export function MappingTable({
                     <div className="font-medium text-neutral-800 dark:text-neutral-200">
                       {clo.code}
                     </div>
-                    <div className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-                      {clo.description}
-                    </div>
+                    <ClampableText
+                      text={clo.description}
+                      className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400"
+                    />
                   </>
                 )}
               </td>
@@ -157,14 +162,15 @@ export function MappingTable({
                         curriculumVersionId={curriculumVersionId}
                         cloId={clo.id}
                         ploId={plo.id}
-                        initialLevel={mapping?.levelCode ?? ''}
-                        displayCodes={displayCodes}
+                        initialMappingLevelId={mapping?.mappingLevelId ?? ''}
+                        mappingLevels={mappingLevels}
+                        levelColors={levelColors}
                       />
                     ) : mapping ? (
                       <span
-                        className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium ${LEVEL_BADGE_CLASSES[mapping.levelCode]}`}
+                        className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium ${levelColors[mapping.mappingLevelId]?.badge ?? ''}`}
                       >
-                        {displayCodes[mapping.levelCode]}
+                        {levelsById[mapping.mappingLevelId]?.displayCode}
                       </span>
                     ) : null}
                   </td>

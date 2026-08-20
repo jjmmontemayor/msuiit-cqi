@@ -15,22 +15,93 @@ function optInt(formData: FormData, key: string): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+// The API's error responses are Nest's default JSON body
+// (`{"statusCode":409,"message":"...","error":"Conflict"}`); pull out just
+// the message for a readable banner, falling back to the raw text.
+function mappingLevelErrorMessage(err: ApiError): string {
+  try {
+    const parsed = JSON.parse(err.message);
+    return typeof parsed.message === 'string' ? parsed.message : err.message;
+  } catch {
+    return err.message;
+  }
+}
+
 export async function updateMappingLevelWeights(programId: string, formData: FormData) {
   const levels = await apiFetch<MappingLevel[]>(`/mapping-levels?programId=${programId}`);
-  await Promise.all(
-    levels.map((level) => {
-      const weight = optInt(formData, `weight_${level.code}`);
-      const displayCode = str(formData, `displayCode_${level.code}`);
-      const data: Record<string, unknown> = {};
-      if (weight != null) data.weight = weight;
-      if (displayCode) data.displayCode = displayCode;
-      if (Object.keys(data).length === 0) return Promise.resolve();
-      return apiFetch(`/mapping-levels/${level.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(data),
-      });
-    }),
-  );
+  try {
+    await Promise.all(
+      levels.map((level) => {
+        const code = str(formData, `code_${level.id}`);
+        const weight = optInt(formData, `weight_${level.id}`);
+        const displayCode = str(formData, `displayCode_${level.id}`);
+        const label = str(formData, `label_${level.id}`);
+        const data: Record<string, unknown> = {};
+        if (code && code !== level.code) data.code = code;
+        if (weight != null) data.weight = weight;
+        if (displayCode) data.displayCode = displayCode;
+        if (label) data.label = label;
+        if (Object.keys(data).length === 0) return Promise.resolve();
+        return apiFetch(`/mapping-levels/${level.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify(data),
+        });
+      }),
+    );
+  } catch (err) {
+    if (err instanceof ApiError) {
+      redirect(
+        `/admin/programs/${programId}?mappingLevelError=${encodeURIComponent(mappingLevelErrorMessage(err))}`,
+      );
+    }
+    throw err;
+  }
+
+  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/programs/${programId}`, 'layout');
+}
+
+export async function createMappingLevel(programId: string, formData: FormData) {
+  const code = str(formData, 'code');
+  const label = str(formData, 'label');
+  const weight = optInt(formData, 'weight');
+  if (!code || !label || weight == null) return;
+
+  try {
+    await apiFetch('/mapping-levels', {
+      method: 'POST',
+      body: JSON.stringify({
+        programId,
+        code,
+        displayCode: str(formData, 'displayCode') || undefined,
+        label,
+        weight,
+      }),
+    });
+  } catch (err) {
+    if (err instanceof ApiError) {
+      redirect(
+        `/admin/programs/${programId}?mappingLevelError=${encodeURIComponent(mappingLevelErrorMessage(err))}`,
+      );
+    }
+    throw err;
+  }
+
+  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/programs/${programId}`, 'layout');
+}
+
+export async function deleteMappingLevel(programId: string, levelId: string) {
+  try {
+    await apiFetch(`/mapping-levels/${levelId}`, { method: 'DELETE' });
+  } catch (err) {
+    if (err instanceof ApiError) {
+      redirect(
+        `/admin/programs/${programId}?mappingLevelError=${encodeURIComponent(mappingLevelErrorMessage(err))}`,
+      );
+    }
+    throw err;
+  }
 
   revalidatePath(`/admin/programs/${programId}`);
   revalidatePath(`/programs/${programId}`, 'layout');

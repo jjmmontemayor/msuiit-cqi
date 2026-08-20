@@ -105,20 +105,19 @@ export interface PerformanceIndicator {
 export interface MappingLevel {
   id: string;
   programId: string;
-  code: 'I' | 'P' | 'D';
+  code: string;
   displayCode: string;
   label: string;
   weight: number;
 }
 
-export type DisplayCodes = Record<'I' | 'P' | 'D', string>;
+// Mappings reference a level by id (MappingLevel.id), so components look up
+// display info via this map rather than by a fixed I/P/D code -- a program
+// can have any number of levels with any codes.
+export type LevelsById = Record<string, MappingLevel>;
 
-export function buildDisplayCodes(mappingLevels: MappingLevel[]): DisplayCodes {
-  const codes = { I: 'I', P: 'P', D: 'D' };
-  for (const level of mappingLevels) {
-    codes[level.code] = level.displayCode;
-  }
-  return codes;
+export function buildLevelsById(mappingLevels: MappingLevel[]): LevelsById {
+  return Object.fromEntries(mappingLevels.map((level) => [level.id, level]));
 }
 
 export interface Cohort {
@@ -157,7 +156,7 @@ export interface CloPloMapping {
   cloId: string;
   ploId: string;
   curriculumVersionId: string;
-  levelCode: 'I' | 'P' | 'D';
+  mappingLevelId: string;
 }
 
 export interface CloPiMapping {
@@ -165,7 +164,7 @@ export interface CloPiMapping {
   cloId: string;
   piId: string;
   curriculumVersionId: string;
-  levelCode: 'I' | 'P' | 'D';
+  mappingLevelId: string;
   assessmentMethod: string | null;
 }
 

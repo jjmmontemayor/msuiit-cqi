@@ -4,19 +4,19 @@ type CourseWithClos = Course & { clos: Clo[] };
 
 export interface CourseBreakdown {
   courseCode: string;
-  I: number;
-  P: number;
-  D: number;
+  countsByLevelId: Record<string, number>;
 }
 
 export interface PloSummaryRow {
   ploId: string;
   ploCode: string;
   ploDescription: string;
-  I: number;
-  P: number;
-  D: number;
+  countsByLevelId: Record<string, number>;
   courses: CourseBreakdown[];
+}
+
+export function totalCount(countsByLevelId: Record<string, number>): number {
+  return Object.values(countsByLevelId).reduce((sum, n) => sum + n, 0);
 }
 
 export function buildPloSummary(
@@ -37,9 +37,7 @@ export function buildPloSummary(
       ploId: plo.id,
       ploCode: plo.code,
       ploDescription: plo.description,
-      I: 0,
-      P: 0,
-      D: 0,
+      countsByLevelId: {},
       courses: [],
     });
   }
@@ -49,7 +47,7 @@ export function buildPloSummary(
   for (const m of mappings) {
     const row = rows.get(m.ploId);
     if (!row) continue;
-    row[m.levelCode] += 1;
+    row.countsByLevelId[m.mappingLevelId] = (row.countsByLevelId[m.mappingLevelId] ?? 0) + 1;
 
     const courseCode = courseCodeByCloId.get(m.cloId);
     if (!courseCode) continue;
@@ -61,10 +59,10 @@ export function buildPloSummary(
     }
     let entry = byCourse.get(courseCode);
     if (!entry) {
-      entry = { courseCode, I: 0, P: 0, D: 0 };
+      entry = { courseCode, countsByLevelId: {} };
       byCourse.set(courseCode, entry);
     }
-    entry[m.levelCode] += 1;
+    entry.countsByLevelId[m.mappingLevelId] = (entry.countsByLevelId[m.mappingLevelId] ?? 0) + 1;
   }
 
   for (const [ploId, byCourse] of courseBreakdownByPlo) {

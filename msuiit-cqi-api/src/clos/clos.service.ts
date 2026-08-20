@@ -107,7 +107,7 @@ export class ClosService {
             cloId: created.id,
             ploId: m.ploId,
             curriculumVersionId: dto.curriculumVersionId,
-            levelCode: m.levelCode,
+            mappingLevelId: m.mappingLevelId,
           })),
         });
       }
@@ -118,7 +118,7 @@ export class ClosService {
             cloId: created.id,
             piId: m.piId,
             curriculumVersionId: dto.curriculumVersionId,
-            levelCode: m.levelCode,
+            mappingLevelId: m.mappingLevelId,
             assessmentMethod: m.assessmentMethod,
           })),
         });

@@ -3,7 +3,6 @@ import { notFound } from 'next/navigation';
 import {
   apiFetch,
   ApiError,
-  buildDisplayCodes,
   type Clo,
   type CurriculumVersion,
   type CloPiMapping,
@@ -13,6 +12,9 @@ import {
   type Plo,
   type Program,
 } from '@/lib/api';
+import { buildLevelColors } from '@/lib/mapping-level-colors';
+import { ClampableText } from '@/components/clampable-text';
+import { ExpandAllCheckbox } from '@/components/expand-all-checkbox';
 import { PiLevelCell } from './pi-cell';
 
 export const dynamic = 'force-dynamic';
@@ -46,7 +48,7 @@ export default async function CloPiMappingPage({
     apiFetch<Plo[]>(`/plos?programId=${program.id}`),
     apiFetch<MappingLevel[]>(`/mapping-levels?programId=${program.id}`),
   ]);
-  const displayCodes = buildDisplayCodes(mappingLevels);
+  const levelColors = buildLevelColors(mappingLevels);
 
   if (curriculumVersions.length === 0) {
     return (
@@ -84,9 +86,9 @@ export default async function CloPiMappingPage({
     <div className="flex flex-1 flex-col space-y-4">
       <div>
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          Refine an existing CLO-PLO mapping by setting the level (I/P/D) at
-          which the CLO evidences each individual Performance Indicator, and
-          how it&apos;s assessed. Only CLO×PLO pairs already mapped on the{' '}
+          Refine an existing CLO-PLO mapping by setting the level at which
+          the CLO evidences each individual Performance Indicator, and how
+          it&apos;s assessed. Only CLO×PLO pairs already mapped on the{' '}
           <Link
             href={`/programs/${program.code}/mappings?curriculumVersionId=${selectedVersionId}`}
             className="underline"
@@ -127,7 +129,9 @@ export default async function CloPiMappingPage({
             : 'No PLOs set up for this program yet.'}
         </p>
       ) : (
-        <div className="max-h-[70vh] overflow-auto rounded-md border border-neutral-200 dark:border-neutral-800">
+        <div className="clo-expand-scope space-y-2">
+          <ExpandAllCheckbox />
+          <div className="max-h-[70vh] overflow-auto rounded-md border border-neutral-200 dark:border-neutral-800">
           <table className="min-w-full border-collapse text-sm">
             <thead className="sticky top-0 z-20 bg-neutral-100 dark:bg-neutral-900">
               <tr>
@@ -195,16 +199,27 @@ export default async function CloPiMappingPage({
                         rowSpan={course.clos.length}
                         className="sticky left-0 z-10 w-36 whitespace-nowrap bg-white px-3 py-1.5 align-top font-medium dark:bg-neutral-950"
                       >
-                        {course.code}
+                        <Link
+                          href={`/programs/${program.code}/courses/${course.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:underline"
+                        >
+                          <div>{course.code}</div>
+                          <div className="whitespace-normal text-xs font-normal text-neutral-500 dark:text-neutral-400">
+                            {course.title}
+                          </div>
+                        </Link>
                       </td>
                     )}
                     <td className="w-64 bg-white px-3 py-1.5 align-top dark:bg-neutral-950">
                       <div className="font-medium text-neutral-800 dark:text-neutral-200">
                         {clo.code}
                       </div>
-                      <div className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-                        {clo.description}
-                      </div>
+                      <ClampableText
+                        text={clo.description}
+                        className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400"
+                      />
                     </td>
                     {plos.map((plo) => {
                       const mapping = mappingByCloAndPlo.get(`${clo.id}::${plo.id}`);
@@ -236,9 +251,10 @@ export default async function CloPiMappingPage({
                                 curriculumVersionId={selectedVersionId}
                                 cloId={clo.id}
                                 piId={pi.id}
-                                initialLevel={piMapping?.levelCode ?? ''}
+                                initialMappingLevelId={piMapping?.mappingLevelId ?? ''}
                                 initialAssessmentMethod={piMapping?.assessmentMethod ?? null}
-                                displayCodes={displayCodes}
+                                mappingLevels={mappingLevels}
+                                levelColors={levelColors}
                               />
                             ) : (
                               <div className="flex h-7 items-center justify-center text-neutral-300 dark:text-neutral-700">
@@ -254,6 +270,7 @@ export default async function CloPiMappingPage({
               )}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

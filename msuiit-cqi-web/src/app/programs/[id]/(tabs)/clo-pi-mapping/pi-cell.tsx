@@ -2,42 +2,43 @@
 
 import { useState, useTransition } from 'react';
 import { setCloPiMapping } from './actions';
-import { LEVEL_SELECT_CLASSES } from '@/lib/mapping-level-colors';
-import type { DisplayCodes } from '@/lib/api';
-
-type Level = 'I' | 'P' | 'D' | '';
-
-const LEVELS: Level[] = ['', 'I', 'P', 'D'];
+import { UNSET_LEVEL_SELECT_CLASSES, type LevelColorsById } from '@/lib/mapping-level-colors';
+import type { MappingLevel } from '@/lib/api';
 
 export function PiLevelCell({
   programCode,
   curriculumVersionId,
   cloId,
   piId,
-  initialLevel,
+  initialMappingLevelId,
   initialAssessmentMethod,
-  displayCodes,
+  mappingLevels,
+  levelColors,
 }: {
   programCode: string;
   curriculumVersionId: string;
   cloId: string;
   piId: string;
-  initialLevel: Level;
+  initialMappingLevelId: string;
   initialAssessmentMethod: string | null;
-  displayCodes: DisplayCodes;
+  mappingLevels: MappingLevel[];
+  levelColors: LevelColorsById;
 }) {
-  const [level, setLevel] = useState<Level>(initialLevel);
+  const [mappingLevelId, setMappingLevelId] = useState(initialMappingLevelId);
   const [assessmentMethod, setAssessmentMethod] = useState(initialAssessmentMethod ?? '');
   const [isPending, startTransition] = useTransition();
+  const selectClass = mappingLevelId
+    ? (levelColors[mappingLevelId]?.select ?? UNSET_LEVEL_SELECT_CLASSES)
+    : UNSET_LEVEL_SELECT_CLASSES;
 
   return (
     <div className="flex flex-col items-center gap-0.5 py-0.5">
       <select
-        value={level}
+        value={mappingLevelId}
         disabled={isPending}
         onChange={(e) => {
-          const next = e.target.value as Level;
-          setLevel(next);
+          const next = e.target.value;
+          setMappingLevelId(next);
           startTransition(async () => {
             await setCloPiMapping(
               programCode,
@@ -49,15 +50,16 @@ export function PiLevelCell({
             );
           });
         }}
-        className={`h-7 w-14 rounded border border-neutral-300 text-center text-xs font-medium disabled:opacity-50 dark:border-neutral-700 ${LEVEL_SELECT_CLASSES[level]}`}
+        className={`h-7 w-14 rounded border border-neutral-300 text-center text-xs font-medium disabled:opacity-50 dark:border-neutral-700 ${selectClass}`}
       >
-        {LEVELS.map((l) => (
-          <option key={l} value={l}>
-            {l ? displayCodes[l] : '—'}
+        <option value="">&mdash;</option>
+        {mappingLevels.map((level) => (
+          <option key={level.id} value={level.id}>
+            {level.displayCode}
           </option>
         ))}
       </select>
-      {level && (
+      {mappingLevelId && (
         <input
           value={assessmentMethod}
           disabled={isPending}
@@ -72,7 +74,7 @@ export function PiLevelCell({
                   curriculumVersionId,
                   cloId,
                   piId,
-                  level,
+                  mappingLevelId,
                   assessmentMethod,
                 );
               });

@@ -2,47 +2,49 @@
 
 import { useState, useTransition } from 'react';
 import { setMapping } from './actions';
-import { LEVEL_SELECT_CLASSES } from '@/lib/mapping-level-colors';
-import type { DisplayCodes } from '@/lib/api';
-
-type Level = 'I' | 'P' | 'D' | '';
-
-const LEVELS: Level[] = ['', 'I', 'P', 'D'];
+import { UNSET_LEVEL_SELECT_CLASSES, type LevelColorsById } from '@/lib/mapping-level-colors';
+import type { MappingLevel } from '@/lib/api';
 
 export function MappingCell({
   programId,
   curriculumVersionId,
   cloId,
   ploId,
-  initialLevel,
-  displayCodes,
+  initialMappingLevelId,
+  mappingLevels,
+  levelColors,
 }: {
   programId: string;
   curriculumVersionId: string;
   cloId: string;
   ploId: string;
-  initialLevel: Level;
-  displayCodes: DisplayCodes;
+  initialMappingLevelId: string;
+  mappingLevels: MappingLevel[];
+  levelColors: LevelColorsById;
 }) {
-  const [level, setLevel] = useState<Level>(initialLevel);
+  const [mappingLevelId, setMappingLevelId] = useState(initialMappingLevelId);
   const [isPending, startTransition] = useTransition();
+  const selectClass = mappingLevelId
+    ? (levelColors[mappingLevelId]?.select ?? UNSET_LEVEL_SELECT_CLASSES)
+    : UNSET_LEVEL_SELECT_CLASSES;
 
   return (
     <select
-      value={level}
+      value={mappingLevelId}
       disabled={isPending}
       onChange={(e) => {
-        const next = e.target.value as Level;
-        setLevel(next);
+        const next = e.target.value;
+        setMappingLevelId(next);
         startTransition(async () => {
           await setMapping(programId, curriculumVersionId, cloId, ploId, next);
         });
       }}
-      className={`h-7 w-14 rounded border border-neutral-300 text-center text-xs font-medium disabled:opacity-50 dark:border-neutral-700 ${LEVEL_SELECT_CLASSES[level]}`}
+      className={`h-7 w-14 rounded border border-neutral-300 text-center text-xs font-medium disabled:opacity-50 dark:border-neutral-700 ${selectClass}`}
     >
-      {LEVELS.map((l) => (
-        <option key={l} value={l}>
-          {l ? displayCodes[l] : '—'}
+      <option value="">&mdash;</option>
+      {mappingLevels.map((level) => (
+        <option key={level.id} value={level.id}>
+          {level.displayCode}
         </option>
       ))}
     </select>

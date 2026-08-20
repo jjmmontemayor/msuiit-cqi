@@ -8,7 +8,7 @@
  */
 import * as path from 'path';
 import * as XLSX from 'xlsx';
-import { MappingLevelCode, PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -105,25 +105,10 @@ async function main() {
   // created through the API) -- this script bypasses that service, so it
   // seeds the same defaults directly.
   for (const level of [
-    {
-      code: MappingLevelCode.I,
-      displayCode: 'I',
-      label: 'Introduced',
-      weight: 1,
-    },
-    {
-      code: MappingLevelCode.P,
-      displayCode: 'P',
-      label: 'Practiced',
-      weight: 2,
-    },
-    {
-      code: MappingLevelCode.D,
-      displayCode: 'D',
-      label: 'Demonstrated',
-      weight: 3,
-    },
-  ] as const) {
+    { code: 'I', displayCode: 'I', label: 'Introduced', weight: 1 },
+    { code: 'P', displayCode: 'P', label: 'Practiced', weight: 2 },
+    { code: 'D', displayCode: 'D', label: 'Demonstrated', weight: 3 },
+  ]) {
     await prisma.mappingLevel.upsert({
       where: { programId_code: { programId: program.id, code: level.code } },
       update: {},
@@ -257,7 +242,7 @@ async function main() {
   type CloMappingRow = {
     courseCode: string;
     cloCode: string;
-    ploLevels: { ploCode: string; level: MappingLevelCode }[];
+    ploLevels: { ploCode: string; level: string }[];
   };
   const cloMappingRows: CloMappingRow[] = [];
 
@@ -282,13 +267,13 @@ async function main() {
       // Column position within the block gives the CLO number reliably,
       // independent of "CLO1" vs "CLO 1" label formatting.
       const cloCode = String(colB).replace(/\s+/g, '');
-      const ploLevels: { ploCode: string; level: MappingLevelCode }[] = [];
+      const ploLevels: { ploCode: string; level: string }[] = [];
       for (const [colIdx, ploCode] of ploColIndexToCode) {
         const val = row[colIdx];
         if (val) {
           ploLevels.push({
             ploCode,
-            level: String(val).trim() as MappingLevelCode,
+            level: String(val).trim(),
           });
         }
       }
@@ -369,6 +354,11 @@ async function main() {
   // ---------------------------------------------------------------------
   // CLO -> PLO mappings (+ optional PI attachment for PLO1's key CLOs)
   // ---------------------------------------------------------------------
+  const mappingLevels = await prisma.mappingLevel.findMany({
+    where: { programId: program.id },
+  });
+  const mappingLevelByCode = new Map(mappingLevels.map((l) => [l.code, l]));
+
   let mappingCount = 0;
   for (const row of cloMappingRows) {
     const clo = cloByKey.get(`${row.courseCode}::${row.cloCode}`);
@@ -377,6 +367,11 @@ async function main() {
     for (const { ploCode, level } of row.ploLevels) {
       const plo = ploByCode.get(ploCode);
       if (!plo) continue;
+      const mappingLevel = mappingLevelByCode.get(level);
+      if (!mappingLevel) {
+        console.warn(`Skipping unrecognized mapping level "${level}" for ${row.courseCode} ${row.cloCode} -> ${ploCode}`);
+        continue;
+      }
 
       const matchingPi =
         ploCode === 'PLO1'
@@ -400,7 +395,7 @@ async function main() {
           cloId: clo.id,
           ploId: plo.id,
           curriculumVersionId: curriculumVersion.id,
-          levelCode: level,
+          mappingLevelId: mappingLevel.id,
         },
       });
       mappingCount += 1;
@@ -420,7 +415,7 @@ async function main() {
             cloId: clo.id,
             piId: pi.id,
             curriculumVersionId: curriculumVersion.id,
-            levelCode: level,
+            mappingLevelId: mappingLevel.id,
             assessmentMethod: PI_ASSESSMENT_METHOD,
           },
         });

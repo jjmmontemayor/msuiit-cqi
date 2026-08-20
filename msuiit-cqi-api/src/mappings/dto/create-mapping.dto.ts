@@ -1,5 +1,4 @@
-import { IsEnum, IsUUID } from 'class-validator';
-import { MappingLevelCode } from '@prisma/client';
+import { IsUUID } from 'class-validator';
 
 export class CreateMappingDto {
   @IsUUID()
@@ -11,6 +10,6 @@ export class CreateMappingDto {
   @IsUUID()
   curriculumVersionId!: string;
 
-  @IsEnum(MappingLevelCode)
-  levelCode!: MappingLevelCode;
+  @IsUUID()
+  mappingLevelId!: string;
 }

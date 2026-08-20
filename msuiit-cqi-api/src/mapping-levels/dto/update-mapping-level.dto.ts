@@ -2,6 +2,11 @@ import { IsInt, IsOptional, IsString, Min, MaxLength } from 'class-validator';
 
 export class UpdateMappingLevelDto {
   @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  code?: string;
+
+  @IsOptional()
   @IsInt()
   @Min(1)
   weight?: number;

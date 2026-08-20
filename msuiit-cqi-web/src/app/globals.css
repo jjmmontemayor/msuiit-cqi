@@ -24,3 +24,12 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Lets a single "expand all" checkbox override every individually-clamped
+   .clo-desc element within the same .clo-expand-scope, regardless of each
+   one's own local expand/collapse state -- see ClampableText. */
+.clo-expand-scope:has(.expand-all-clos:checked) .clo-desc {
+  display: block !important;
+  -webkit-line-clamp: unset !important;
+  overflow: visible !important;
+}

@@ -7,12 +7,13 @@
 --
 -- This file is the human-readable copy for reference. It is kept in sync
 -- with migrations/<timestamp>_add_reporting_views/migration.sql (and the
--- later migrations/<timestamp>_update_reporting_views_for_cohort_scoped_mapping
--- and migrations/<timestamp>_add_curriculum_versions), which is what
--- actually creates/updates these views in every environment via
--- `prisma migrate deploy` — no manual psql step needed. If you change the
--- view definitions, update both files and add a new migration for changes
--- made after the initial one.
+-- later migrations/<timestamp>_update_reporting_views_for_cohort_scoped_mapping,
+-- migrations/<timestamp>_add_curriculum_versions, and
+-- migrations/<timestamp>_mapping_levels_by_id), which is what actually
+-- creates/updates these views in every environment via `prisma migrate
+-- deploy` — no manual psql step needed. If you change the view definitions,
+-- update both files and add a new migration for changes made after the
+-- initial one.
 --
 -- See ../../docs/schema.md for the full rationale.
 
@@ -37,9 +38,11 @@ JOIN courses c             ON c.id = co.course_id
 GROUP BY c.id, c.code, clo.id, clo.code;
 
 -- Weighted rollup of a course's CLO attainments into each PLO it maps to,
--- weighted by mapping level (I=1, P=2, D=3). Equivalent to "PLO Attainment
--- by Courses". Joins clo_plo_mappings directly (not via performance
--- indicators) since a CLO->PLO mapping can exist before any PI is defined.
+-- weighted by the mapping's level (mapping_levels.weight, program-defined --
+-- historically I=1/P=2/D=3, but admins can add/edit/delete levels freely).
+-- Equivalent to "PLO Attainment by Courses". Joins clo_plo_mappings directly
+-- (not via performance indicators) since a CLO->PLO mapping can exist before
+-- any PI is defined.
 --
 -- clo_plo_mappings is scoped per curriculum version, not per cohort
 -- directly (curricula get revised over time, and multiple cohorts can share
@@ -71,7 +74,7 @@ JOIN course_offerings co    ON co.id = e.course_offering_id
 JOIN courses c               ON c.id = co.course_id
 JOIN clo_plo_mappings cpm    ON cpm.clo_id = clo.id AND cpm.curriculum_version_id = coh.curriculum_version_id
 JOIN plos plo                 ON plo.id = cpm.plo_id
-JOIN mapping_levels ml        ON ml.code = cpm.level_code AND ml.program_id = coh.program_id
+JOIN mapping_levels ml        ON ml.id = cpm.mapping_level_id
 GROUP BY c.id, c.code, plo.id, plo.code, coh.id, coh.code;
 
 -- Weighted rollup of a student's CLO scores (across all their enrollments)
@@ -93,7 +96,7 @@ JOIN students s                 ON s.id = e.student_id
 JOIN cohorts coh                ON coh.id = s.cohort_id
 JOIN clo_plo_mappings cpm       ON cpm.clo_id = ca.clo_id AND cpm.curriculum_version_id = coh.curriculum_version_id
 JOIN plos plo                    ON plo.id = cpm.plo_id
-JOIN mapping_levels ml           ON ml.code = cpm.level_code AND ml.program_id = s.program_id
+JOIN mapping_levels ml           ON ml.id = cpm.mapping_level_id
 GROUP BY s.id, s.student_number, plo.id, plo.code, s.cohort_id;
 
 -- Program-wide average per PLO across all courses, equivalent to the

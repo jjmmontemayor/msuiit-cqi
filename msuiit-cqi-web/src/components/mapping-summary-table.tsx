@@ -1,24 +1,20 @@
 'use client';
 
 import { Fragment, useState } from 'react';
-import type { PloSummaryRow } from '@/lib/mapping-summary';
-import { LEVEL_TEXT_CLASSES } from '@/lib/mapping-level-colors';
-import type { DisplayCodes } from '@/lib/api';
+import { totalCount, type PloSummaryRow } from '@/lib/mapping-summary';
+import type { LevelColorsById } from '@/lib/mapping-level-colors';
+import type { MappingLevel } from '@/lib/api';
 
-type SortKey = 'I' | 'P' | 'D' | 'Total';
-
-const SORT_KEYS: SortKey[] = ['I', 'P', 'D', 'Total'];
-
-function totalOf(row: PloSummaryRow) {
-  return row.I + row.P + row.D;
-}
+type SortKey = string; // a MappingLevel.id, or 'Total'
 
 export function MappingSummaryTable({
   rows,
-  displayCodes,
+  mappingLevels,
+  levelColors,
 }: {
   rows: PloSummaryRow[];
-  displayCodes: DisplayCodes;
+  mappingLevels: MappingLevel[];
+  levelColors: LevelColorsById;
 }) {
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
@@ -35,11 +31,13 @@ export function MappingSummaryTable({
 
   const sortedRows = sortKey
     ? [...rows].sort((a, b) => {
-        const av = sortKey === 'Total' ? totalOf(a) : a[sortKey];
-        const bv = sortKey === 'Total' ? totalOf(b) : b[sortKey];
+        const av = sortKey === 'Total' ? totalCount(a.countsByLevelId) : (a.countsByLevelId[sortKey] ?? 0);
+        const bv = sortKey === 'Total' ? totalCount(b.countsByLevelId) : (b.countsByLevelId[sortKey] ?? 0);
         return sortDir === 'asc' ? av - bv : bv - av;
       })
     : rows;
+
+  const colSpan = mappingLevels.length + 2;
 
   return (
     <div className="overflow-x-auto rounded-md border border-neutral-200 dark:border-neutral-800">
@@ -47,20 +45,32 @@ export function MappingSummaryTable({
         <thead className="bg-neutral-100 dark:bg-neutral-900">
           <tr>
             <th className="px-3 py-2 text-left">PLO</th>
-            {SORT_KEYS.map((key) => (
-              <th key={key} className="px-3 py-2 text-right">
+            {mappingLevels.map((level) => (
+              <th key={level.id} className="px-3 py-2 text-right">
                 <button
                   type="button"
-                  onClick={() => handleSort(key)}
+                  onClick={() => handleSort(level.id)}
                   className="inline-flex items-center gap-0.5 font-medium hover:text-neutral-900 dark:hover:text-neutral-100"
                 >
-                  {key === 'Total' ? key : displayCodes[key]}
-                  {sortKey === key && (
+                  {level.displayCode}
+                  {sortKey === level.id && (
                     <span aria-hidden="true">{sortDir === 'asc' ? '↑' : '↓'}</span>
                   )}
                 </button>
               </th>
             ))}
+            <th className="px-3 py-2 text-right">
+              <button
+                type="button"
+                onClick={() => handleSort('Total')}
+                className="inline-flex items-center gap-0.5 font-medium hover:text-neutral-900 dark:hover:text-neutral-100"
+              >
+                Total
+                {sortKey === 'Total' && (
+                  <span aria-hidden="true">{sortDir === 'asc' ? '↑' : '↓'}</span>
+                )}
+              </button>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -86,16 +96,21 @@ export function MappingSummaryTable({
                       {row.ploDescription}
                     </div>
                   </td>
-                  <td className={`px-3 py-1.5 text-right font-medium tabular-nums ${LEVEL_TEXT_CLASSES.I}`}>{row.I}</td>
-                  <td className={`px-3 py-1.5 text-right font-medium tabular-nums ${LEVEL_TEXT_CLASSES.P}`}>{row.P}</td>
-                  <td className={`px-3 py-1.5 text-right font-medium tabular-nums ${LEVEL_TEXT_CLASSES.D}`}>{row.D}</td>
+                  {mappingLevels.map((level) => (
+                    <td
+                      key={level.id}
+                      className={`px-3 py-1.5 text-right font-medium tabular-nums ${levelColors[level.id]?.text ?? ''}`}
+                    >
+                      {row.countsByLevelId[level.id] ?? 0}
+                    </td>
+                  ))}
                   <td className="px-3 py-1.5 text-right font-medium tabular-nums">
-                    {totalOf(row)}
+                    {totalCount(row.countsByLevelId)}
                   </td>
                 </tr>
                 {expanded && (
                   <tr className="border-t border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900/50">
-                    <td colSpan={5} className="px-3 py-2 pl-8">
+                    <td colSpan={colSpan} className="px-3 py-2 pl-8">
                       {row.courses.length === 0 ? (
                         <p className="text-xs text-neutral-500">No courses mapped to this PLO.</p>
                       ) : (
@@ -103,9 +118,11 @@ export function MappingSummaryTable({
                           <thead>
                             <tr className="text-neutral-500 dark:text-neutral-400">
                               <th className="px-2 py-1 text-left font-medium">Course</th>
-                              <th className="px-2 py-1 text-right font-medium">{displayCodes.I}</th>
-                              <th className="px-2 py-1 text-right font-medium">{displayCodes.P}</th>
-                              <th className="px-2 py-1 text-right font-medium">{displayCodes.D}</th>
+                              {mappingLevels.map((level) => (
+                                <th key={level.id} className="px-2 py-1 text-right font-medium">
+                                  {level.displayCode}
+                                </th>
+                              ))}
                               <th className="px-2 py-1 text-right font-medium">Total</th>
                             </tr>
                           </thead>
@@ -116,11 +133,16 @@ export function MappingSummaryTable({
                                 className="border-t border-neutral-200 dark:border-neutral-800"
                               >
                                 <td className="px-2 py-1">{c.courseCode}</td>
-                                <td className={`px-2 py-1 text-right tabular-nums ${LEVEL_TEXT_CLASSES.I}`}>{c.I}</td>
-                                <td className={`px-2 py-1 text-right tabular-nums ${LEVEL_TEXT_CLASSES.P}`}>{c.P}</td>
-                                <td className={`px-2 py-1 text-right tabular-nums ${LEVEL_TEXT_CLASSES.D}`}>{c.D}</td>
+                                {mappingLevels.map((level) => (
+                                  <td
+                                    key={level.id}
+                                    className={`px-2 py-1 text-right tabular-nums ${levelColors[level.id]?.text ?? ''}`}
+                                  >
+                                    {c.countsByLevelId[level.id] ?? 0}
+                                  </td>
+                                ))}
                                 <td className="px-2 py-1 text-right tabular-nums">
-                                  {c.I + c.P + c.D}
+                                  {totalCount(c.countsByLevelId)}
                                 </td>
                               </tr>
                             ))}

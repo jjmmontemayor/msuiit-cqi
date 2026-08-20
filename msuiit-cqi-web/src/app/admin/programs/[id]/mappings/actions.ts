@@ -8,25 +8,25 @@ export async function setMapping(
   curriculumVersionId: string,
   cloId: string,
   ploId: string,
-  levelCode: 'I' | 'P' | 'D' | '',
+  mappingLevelId: string,
 ) {
   const existing = await apiFetch<CloPloMapping[]>(
     `/mappings?cloId=${cloId}&ploId=${ploId}&curriculumVersionId=${curriculumVersionId}`,
   );
 
-  if (!levelCode) {
+  if (!mappingLevelId) {
     if (existing[0]) {
       await apiFetch(`/mappings/${existing[0].id}`, { method: 'DELETE' });
     }
   } else if (existing[0]) {
     await apiFetch(`/mappings/${existing[0].id}`, {
       method: 'PATCH',
-      body: JSON.stringify({ levelCode }),
+      body: JSON.stringify({ mappingLevelId }),
     });
   } else {
     await apiFetch('/mappings', {
       method: 'POST',
-      body: JSON.stringify({ cloId, ploId, curriculumVersionId, levelCode }),
+      body: JSON.stringify({ cloId, ploId, curriculumVersionId, mappingLevelId }),
     });
   }
 

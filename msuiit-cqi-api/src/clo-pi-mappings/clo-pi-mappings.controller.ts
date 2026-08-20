@@ -27,7 +27,11 @@ export class CloPiMappingsController {
     @Query('piId') piId?: string,
     @Query('curriculumVersionId') curriculumVersionId?: string,
   ) {
-    return this.cloPiMappingsService.findAll({ cloId, piId, curriculumVersionId });
+    return this.cloPiMappingsService.findAll({
+      cloId,
+      piId,
+      curriculumVersionId,
+    });
   }
 
   @Get(':id')

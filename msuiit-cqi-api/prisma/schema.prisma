@@ -54,34 +54,29 @@ model Course {
   @@map("courses")
 }
 
-enum MappingLevelCode {
-  I
-  P
-  D
-}
-
-// Weights are program-specific (each program can tune how I/P/D translate
-// into a weighted score), so this is one row per (program, code) rather
-// than a single global row per code. Not directly related to CloPloMapping
-// at the Prisma level -- CloPloMapping.levelCode is a bare enum, and the
-// applicable weight is looked up by (the mapping's curriculum version's
-// program, code) in the reporting views and the admin weight-computation
-// table.
+// Weights are program-specific (each program defines its own set of levels
+// and tunes how each translates into a weighted score), so this is one row
+// per (program, code) rather than a fixed global triad. Admins can add, edit,
+// or delete levels freely (subject to a level in use by existing CLO
+// mappings being protected from deletion) -- see MappingLevelsService.
 //
-// `code` (the I/P/D enum) is the stable internal key -- it's what
-// clo_plo_mappings.level_code actually stores, so it can't change without a
-// data migration. `displayCode` is what the UI actually shows in badges and
-// selects, and is program-configurable (e.g. a program could show "B/A/M"
-// instead of "I/P/D") -- defaults to the enum's own letter at creation.
+// `code` is just a short label (historically "I"/"P"/"D", but any string) --
+// mappings reference a level by its `id` (CloPloMapping.mappingLevelId /
+// CloPiMapping.mappingLevelId), not by `code`, so renaming a level's code
+// doesn't require touching any mapping data. `displayCode` is what badges
+// and selects actually render (defaults to `code` at creation, but can
+// diverge, e.g. a program could show "B/A/M" while `code` stays "I/P/D").
 model MappingLevel {
-  id          String           @id @default(uuid())
-  programId   String           @map("program_id")
-  code        MappingLevelCode
-  displayCode String           @map("display_code")
+  id          String @id @default(uuid())
+  programId   String @map("program_id")
+  code        String
+  displayCode String @map("display_code")
   label       String
   weight      Int
 
-  program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+  program        Program         @relation(fields: [programId], references: [id], onDelete: Cascade)
+  cloPloMappings CloPloMapping[]
+  cloPiMappings  CloPiMapping[]
 
   @@unique([programId, code])
   @@map("mapping_levels")
@@ -233,28 +228,29 @@ model Clo {
   @@map("clos")
 }
 
-// The CLO->PLO mapping level (I/P/D) is the primary fact — every course's
-// CLOs are mapped straight to all applicable PLOs (see the workbook's
-// `Mapping` sheet, which has no PI column at all). PI-level refinement (which
-// PIs within that PLO the CLO evidences, and at what level) is recorded
+// The CLO->PLO mapping level is the primary fact — every course's CLOs are
+// mapped straight to all applicable PLOs (see the workbook's `Mapping`
+// sheet, which has no PI column at all). PI-level refinement (which PIs
+// within that PLO the CLO evidences, and at what level) is recorded
 // separately in CloPiMapping, since a single CLO can evidence more than one
 // PI in the same PLO at different levels.
 //
 // `curriculumVersionId` scopes the mapping to a curriculum revision, the
 // same way Clo is scoped: curricula get revised over time, so the same CLO
-// can map to a PLO at a different I/P/D level (or not at all) in a later
-// version. Each version therefore owns its own complete mapping set rather
-// than sharing one global table.
+// can map to a PLO at a different level (or not at all) in a later version.
+// Each version therefore owns its own complete mapping set rather than
+// sharing one global table.
 model CloPloMapping {
-  id                  String           @id @default(uuid())
-  cloId               String           @map("clo_id")
-  ploId               String           @map("plo_id")
-  curriculumVersionId String           @map("curriculum_version_id")
-  levelCode           MappingLevelCode @map("level_code")
+  id                  String @id @default(uuid())
+  cloId               String @map("clo_id")
+  ploId               String @map("plo_id")
+  curriculumVersionId String @map("curriculum_version_id")
+  mappingLevelId      String @map("mapping_level_id")
 
   clo               Clo               @relation(fields: [cloId], references: [id], onDelete: Cascade)
   plo               Plo               @relation(fields: [ploId], references: [id], onDelete: Cascade)
   curriculumVersion CurriculumVersion @relation(fields: [curriculumVersionId], references: [id], onDelete: Cascade)
+  mappingLevel      MappingLevel      @relation(fields: [mappingLevelId], references: [id])
 
   @@unique([cloId, ploId, curriculumVersionId])
   @@map("clo_plo_mappings")
@@ -262,19 +258,20 @@ model CloPloMapping {
 
 // PI-level refinement of a CLO->PLO mapping: requires the CLO to already map
 // to the PI's PLO (see CloPloMapping) before it can be set, but tracks its
-// own I/P/D level and assessment method per (CLO, PI) pair, independent of
-// the other PIs under the same PLO.
+// own level and assessment method per (CLO, PI) pair, independent of the
+// other PIs under the same PLO.
 model CloPiMapping {
-  id                  String           @id @default(uuid())
-  cloId               String           @map("clo_id")
-  piId                String           @map("pi_id")
-  curriculumVersionId String           @map("curriculum_version_id")
-  levelCode           MappingLevelCode @map("level_code")
-  assessmentMethod    String?          @map("assessment_method")
+  id                  String  @id @default(uuid())
+  cloId               String  @map("clo_id")
+  piId                String  @map("pi_id")
+  curriculumVersionId String  @map("curriculum_version_id")
+  mappingLevelId      String  @map("mapping_level_id")
+  assessmentMethod    String? @map("assessment_method")
 
   clo               Clo                  @relation(fields: [cloId], references: [id], onDelete: Cascade)
   pi                PerformanceIndicator @relation(fields: [piId], references: [id], onDelete: Cascade)
   curriculumVersion CurriculumVersion    @relation(fields: [curriculumVersionId], references: [id], onDelete: Cascade)
+  mappingLevel      MappingLevel         @relation(fields: [mappingLevelId], references: [id])
 
   @@unique([cloId, piId, curriculumVersionId])
   @@map("clo_pi_mappings")

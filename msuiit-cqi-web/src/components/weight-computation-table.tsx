@@ -2,28 +2,28 @@
 
 import { Fragment, useState } from 'react';
 import type { PloSummaryRow } from '@/lib/mapping-summary';
-import type { DisplayCodes } from '@/lib/api';
+import type { MappingLevel } from '@/lib/api';
 
-function weighted(
-  counts: { I: number; P: number; D: number },
-  weights: Record<'I' | 'P' | 'D', number>,
-) {
-  const I = counts.I * weights.I;
-  const P = counts.P * weights.P;
-  const D = counts.D * weights.D;
-  return { I, P, D, total: I + P + D };
+function weightedByLevel(countsByLevelId: Record<string, number>, mappingLevels: MappingLevel[]) {
+  const weighted: Record<string, number> = {};
+  let total = 0;
+  for (const level of mappingLevels) {
+    const w = (countsByLevelId[level.id] ?? 0) * level.weight;
+    weighted[level.id] = w;
+    total += w;
+  }
+  return { weighted, total };
 }
 
 export function WeightComputationTable({
   rows,
-  weights,
-  displayCodes,
+  mappingLevels,
 }: {
   rows: PloSummaryRow[];
-  weights: Record<'I' | 'P' | 'D', number>;
-  displayCodes: DisplayCodes;
+  mappingLevels: MappingLevel[];
 }) {
   const [expandedPloId, setExpandedPloId] = useState<string | null>(null);
+  const colSpan = mappingLevels.length + 2;
 
   return (
     <div className="overflow-x-auto rounded-md border border-neutral-200 dark:border-neutral-800">
@@ -31,15 +31,17 @@ export function WeightComputationTable({
         <thead className="bg-neutral-100 dark:bg-neutral-900">
           <tr>
             <th className="px-3 py-2 text-left">PLO</th>
-            <th className="px-3 py-2 text-right">{displayCodes.I} (&times;{weights.I})</th>
-            <th className="px-3 py-2 text-right">{displayCodes.P} (&times;{weights.P})</th>
-            <th className="px-3 py-2 text-right">{displayCodes.D} (&times;{weights.D})</th>
+            {mappingLevels.map((level) => (
+              <th key={level.id} className="px-3 py-2 text-right">
+                {level.displayCode} (&times;{level.weight})
+              </th>
+            ))}
             <th className="px-3 py-2 text-right">Weighted Total</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => {
-            const w = weighted(row, weights);
+            const { weighted, total } = weightedByLevel(row.countsByLevelId, mappingLevels);
             const expanded = expandedPloId === row.ploId;
             return (
               <Fragment key={row.ploId}>
@@ -58,20 +60,20 @@ export function WeightComputationTable({
                       {row.ploCode}
                     </div>
                   </td>
-                  <td className="px-3 py-1.5 text-right tabular-nums" title={`${row.I} × ${weights.I}`}>
-                    {w.I}
-                  </td>
-                  <td className="px-3 py-1.5 text-right tabular-nums" title={`${row.P} × ${weights.P}`}>
-                    {w.P}
-                  </td>
-                  <td className="px-3 py-1.5 text-right tabular-nums" title={`${row.D} × ${weights.D}`}>
-                    {w.D}
-                  </td>
-                  <td className="px-3 py-1.5 text-right font-medium tabular-nums">{w.total}</td>
+                  {mappingLevels.map((level) => (
+                    <td
+                      key={level.id}
+                      className="px-3 py-1.5 text-right tabular-nums"
+                      title={`${row.countsByLevelId[level.id] ?? 0} × ${level.weight}`}
+                    >
+                      {weighted[level.id]}
+                    </td>
+                  ))}
+                  <td className="px-3 py-1.5 text-right font-medium tabular-nums">{total}</td>
                 </tr>
                 {expanded && (
                   <tr className="border-t border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900/50">
-                    <td colSpan={5} className="px-3 py-2 pl-8">
+                    <td colSpan={colSpan} className="px-3 py-2 pl-8">
                       {row.courses.length === 0 ? (
                         <p className="text-xs text-neutral-500">No courses mapped to this PLO.</p>
                       ) : (
@@ -79,28 +81,35 @@ export function WeightComputationTable({
                           <thead>
                             <tr className="text-neutral-500 dark:text-neutral-400">
                               <th className="px-2 py-1 text-left font-medium">Course</th>
-                              <th className="px-2 py-1 text-right font-medium">{displayCodes.I} (&times;{weights.I})</th>
-                              <th className="px-2 py-1 text-right font-medium">{displayCodes.P} (&times;{weights.P})</th>
-                              <th className="px-2 py-1 text-right font-medium">{displayCodes.D} (&times;{weights.D})</th>
+                              {mappingLevels.map((level) => (
+                                <th key={level.id} className="px-2 py-1 text-right font-medium">
+                                  {level.displayCode} (&times;{level.weight})
+                                </th>
+                              ))}
                               <th className="px-2 py-1 text-right font-medium">Course Subtotal</th>
                             </tr>
                           </thead>
                           <tbody>
                             {row.courses.map((c) => {
-                              const cw = weighted(c, weights);
+                              const cw = weightedByLevel(c.countsByLevelId, mappingLevels);
                               return (
-                                <tr key={c.courseCode} className="border-t border-neutral-200 dark:border-neutral-800">
+                                <tr
+                                  key={c.courseCode}
+                                  className="border-t border-neutral-200 dark:border-neutral-800"
+                                >
                                   <td className="px-2 py-1">{c.courseCode}</td>
-                                  <td className="px-2 py-1 text-right tabular-nums" title={`${c.I} × ${weights.I}`}>
-                                    {cw.I}
+                                  {mappingLevels.map((level) => (
+                                    <td
+                                      key={level.id}
+                                      className="px-2 py-1 text-right tabular-nums"
+                                      title={`${c.countsByLevelId[level.id] ?? 0} × ${level.weight}`}
+                                    >
+                                      {cw.weighted[level.id]}
+                                    </td>
+                                  ))}
+                                  <td className="px-2 py-1 text-right font-medium tabular-nums">
+                                    {cw.total}
                                   </td>
-                                  <td className="px-2 py-1 text-right tabular-nums" title={`${c.P} × ${weights.P}`}>
-                                    {cw.P}
-                                  </td>
-                                  <td className="px-2 py-1 text-right tabular-nums" title={`${c.D} × ${weights.D}`}>
-                                    {cw.D}
-                                  </td>
-                                  <td className="px-2 py-1 text-right font-medium tabular-nums">{cw.total}</td>
                                 </tr>
                               );
                             })}
@@ -108,10 +117,12 @@ export function WeightComputationTable({
                           <tfoot>
                             <tr className="border-t border-neutral-300 font-medium dark:border-neutral-700">
                               <td className="px-2 py-1">PLO Total</td>
-                              <td className="px-2 py-1 text-right tabular-nums">{w.I}</td>
-                              <td className="px-2 py-1 text-right tabular-nums">{w.P}</td>
-                              <td className="px-2 py-1 text-right tabular-nums">{w.D}</td>
-                              <td className="px-2 py-1 text-right tabular-nums">{w.total}</td>
+                              {mappingLevels.map((level) => (
+                                <td key={level.id} className="px-2 py-1 text-right tabular-nums">
+                                  {weighted[level.id]}
+                                </td>
+                              ))}
+                              <td className="px-2 py-1 text-right tabular-nums">{total}</td>
                             </tr>
                           </tfoot>
                         </table>
