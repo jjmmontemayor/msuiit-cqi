@@ -3,6 +3,7 @@
 import { Fragment, useState } from 'react';
 import type { PloSummaryRow } from '@/lib/mapping-summary';
 import { LEVEL_TEXT_CLASSES } from '@/lib/mapping-level-colors';
+import type { DisplayCodes } from '@/lib/api';
 
 type SortKey = 'I' | 'P' | 'D' | 'Total';
 
@@ -12,7 +13,13 @@ function totalOf(row: PloSummaryRow) {
   return row.I + row.P + row.D;
 }
 
-export function MappingSummaryTable({ rows }: { rows: PloSummaryRow[] }) {
+export function MappingSummaryTable({
+  rows,
+  displayCodes,
+}: {
+  rows: PloSummaryRow[];
+  displayCodes: DisplayCodes;
+}) {
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [expandedPloId, setExpandedPloId] = useState<string | null>(null);
@@ -47,7 +54,7 @@ export function MappingSummaryTable({ rows }: { rows: PloSummaryRow[] }) {
                   onClick={() => handleSort(key)}
                   className="inline-flex items-center gap-0.5 font-medium hover:text-neutral-900 dark:hover:text-neutral-100"
                 >
-                  {key}
+                  {key === 'Total' ? key : displayCodes[key]}
                   {sortKey === key && (
                     <span aria-hidden="true">{sortDir === 'asc' ? '↑' : '↓'}</span>
                   )}
@@ -96,9 +103,9 @@ export function MappingSummaryTable({ rows }: { rows: PloSummaryRow[] }) {
                           <thead>
                             <tr className="text-neutral-500 dark:text-neutral-400">
                               <th className="px-2 py-1 text-left font-medium">Course</th>
-                              <th className="px-2 py-1 text-right font-medium">I</th>
-                              <th className="px-2 py-1 text-right font-medium">P</th>
-                              <th className="px-2 py-1 text-right font-medium">D</th>
+                              <th className="px-2 py-1 text-right font-medium">{displayCodes.I}</th>
+                              <th className="px-2 py-1 text-right font-medium">{displayCodes.P}</th>
+                              <th className="px-2 py-1 text-right font-medium">{displayCodes.D}</th>
                               <th className="px-2 py-1 text-right font-medium">Total</th>
                             </tr>
                           </thead>

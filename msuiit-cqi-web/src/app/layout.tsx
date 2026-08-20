@@ -30,7 +30,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-neutral-50 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
         <header className="border-b border-neutral-200 dark:border-neutral-800">
           <div className="flex items-center gap-6 px-6 py-4">
-            <span className="font-semibold">MSU-IIT CQI</span>
+            <span className="font-semibold">MSU-IIT PACE</span>
           </div>
         </header>
         <main className="w-full flex-1 px-6 py-8">{children}</main>

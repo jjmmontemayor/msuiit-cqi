@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { setMapping } from './actions';
 import { LEVEL_SELECT_CLASSES } from '@/lib/mapping-level-colors';
+import type { DisplayCodes } from '@/lib/api';
 
 type Level = 'I' | 'P' | 'D' | '';
 
@@ -14,12 +15,14 @@ export function MappingCell({
   cloId,
   ploId,
   initialLevel,
+  displayCodes,
 }: {
   programId: string;
   curriculumVersionId: string;
   cloId: string;
   ploId: string;
   initialLevel: Level;
+  displayCodes: DisplayCodes;
 }) {
   const [level, setLevel] = useState<Level>(initialLevel);
   const [isPending, startTransition] = useTransition();
@@ -39,7 +42,7 @@ export function MappingCell({
     >
       {LEVELS.map((l) => (
         <option key={l} value={l}>
-          {l || '—'}
+          {l ? displayCodes[l] : '—'}
         </option>
       ))}
     </select>

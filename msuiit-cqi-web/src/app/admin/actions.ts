@@ -20,10 +20,14 @@ export async function updateMappingLevelWeights(programId: string, formData: For
   await Promise.all(
     levels.map((level) => {
       const weight = optInt(formData, `weight_${level.code}`);
-      if (weight == null) return Promise.resolve();
+      const displayCode = str(formData, `displayCode_${level.code}`);
+      const data: Record<string, unknown> = {};
+      if (weight != null) data.weight = weight;
+      if (displayCode) data.displayCode = displayCode;
+      if (Object.keys(data).length === 0) return Promise.resolve();
       return apiFetch(`/mapping-levels/${level.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ weight }),
+        body: JSON.stringify(data),
       });
     }),
   );
@@ -237,6 +241,42 @@ export async function deletePlo(programId: string, ploId: string) {
   revalidatePath(`/programs/${programId}`);
 }
 
+export async function createPerformanceIndicator(
+  programId: string,
+  ploId: string,
+  formData: FormData,
+) {
+  const description = str(formData, 'description');
+  if (!description) return;
+
+  const existing = await apiFetch<{ code: string }[]>(`/performance-indicators?ploId=${ploId}`);
+  const nextNumber =
+    1 +
+    existing.reduce((max, pi) => {
+      const n = Number(pi.code.match(/^PI(\d+)$/)?.[1]);
+      return Number.isFinite(n) ? Math.max(max, n) : max;
+    }, 0);
+
+  await apiFetch('/performance-indicators', {
+    method: 'POST',
+    body: JSON.stringify({
+      ploId,
+      code: `PI${nextNumber}`,
+      description,
+      displayOrder: nextNumber,
+    }),
+  });
+
+  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/programs/${programId}`);
+}
+
+export async function deletePerformanceIndicator(programId: string, piId: string) {
+  await apiFetch(`/performance-indicators/${piId}`, { method: 'DELETE' });
+  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/programs/${programId}`);
+}
+
 export async function linkExistingCourse(programId: string, formData: FormData) {
   const courseId = str(formData, 'courseId');
   if (!courseId) return;
@@ -289,6 +329,21 @@ export async function unlinkCourse(programId: string, curriculumCourseId: string
   revalidatePath(`/programs/${programId}`);
 }
 
+export async function setPloAssessmentTarget(
+  programId: string,
+  curriculumCourseId: string,
+  isPloAssessmentTarget: boolean,
+) {
+  await apiFetch(`/curriculum-courses/${curriculumCourseId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ isPloAssessmentTarget }),
+  });
+  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}/mappings`);
+  revalidatePath(`/programs/${programId}/mappings`);
+}
+
 export async function updateCourseDetails(
   programId: string,
   courseId: string,
@@ -324,7 +379,7 @@ export async function createCourseOffering(
   const academicTermId = str(formData, 'academicTermId');
   if (!academicTermId) return;
 
-  await apiFetch('/course-offerings', {
+  const offering = await apiFetch<{ id: string }>('/course-offerings', {
     method: 'POST',
     body: JSON.stringify({
       courseId,
@@ -333,6 +388,41 @@ export async function createCourseOffering(
       instructorName: str(formData, 'instructorName') || undefined,
     }),
   });
+
+  const copyFromOfferingId = str(formData, 'copyLearningPlanFromOfferingId');
+  if (copyFromOfferingId) {
+    const sourceEntries = await apiFetch<
+      Array<{
+        weekLabel: string;
+        displayOrder: number;
+        topics: string;
+        lessonOutcome: string | null;
+        coLabels: string | null;
+        methodology: string | null;
+        learningResources: string | null;
+        assessment: string | null;
+      }>
+    >(`/learning-plan-entries?courseOfferingId=${copyFromOfferingId}`);
+
+    await Promise.all(
+      sourceEntries.map((entry) =>
+        apiFetch('/learning-plan-entries', {
+          method: 'POST',
+          body: JSON.stringify({
+            courseOfferingId: offering.id,
+            weekLabel: entry.weekLabel,
+            displayOrder: entry.displayOrder,
+            topics: entry.topics,
+            lessonOutcome: entry.lessonOutcome ?? undefined,
+            coLabels: entry.coLabels ?? undefined,
+            methodology: entry.methodology ?? undefined,
+            learningResources: entry.learningResources ?? undefined,
+            assessment: entry.assessment ?? undefined,
+          }),
+        }),
+      ),
+    );
+  }
 
   revalidateCoursePaths(programId, courseId);
 }
@@ -347,20 +437,43 @@ export async function createLearningPlanEntry(
   const topics = str(formData, 'topics');
   if (!weekLabel || !topics) return;
 
+  const existing = await apiFetch<{ displayOrder: number }[]>(
+    `/learning-plan-entries?courseOfferingId=${courseOfferingId}`,
+  );
+  const nextOrder = 1 + existing.reduce((max, e) => Math.max(max, e.displayOrder), 0);
+  const cloLabels = formData.getAll('cloLabels').map(String).filter(Boolean);
+
   await apiFetch('/learning-plan-entries', {
     method: 'POST',
     body: JSON.stringify({
       courseOfferingId,
       weekLabel,
       topics,
-      displayOrder: optInt(formData, 'displayOrder'),
+      displayOrder: nextOrder,
       lessonOutcome: str(formData, 'lessonOutcome') || undefined,
-      coLabels: str(formData, 'coLabels') || undefined,
+      coLabels: cloLabels.length > 0 ? cloLabels.join(',') : undefined,
       methodology: str(formData, 'methodology') || undefined,
       learningResources: str(formData, 'learningResources') || undefined,
       assessment: str(formData, 'assessment') || undefined,
     }),
   });
+
+  revalidateCoursePaths(programId, courseId);
+}
+
+export async function reorderLearningPlanEntries(
+  programId: string,
+  courseId: string,
+  entryIds: string[],
+) {
+  await Promise.all(
+    entryIds.map((entryId, i) =>
+      apiFetch(`/learning-plan-entries/${entryId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ displayOrder: i + 1 }),
+      }),
+    ),
+  );
 
   revalidateCoursePaths(programId, courseId);
 }
@@ -376,6 +489,7 @@ export async function deleteLearningPlanEntry(
 
 function revalidateCoursePaths(programId: string, courseId: string) {
   revalidatePath(`/admin/programs/${programId}/courses/${courseId}`);
+  revalidatePath(`/admin/programs/${programId}/courses/${courseId}/learning-plan`);
   revalidatePath(`/admin/programs/${programId}`);
   revalidatePath(`/admin/programs/${programId}/mappings`);
   revalidatePath(`/programs/${programId}/courses/${courseId}`);

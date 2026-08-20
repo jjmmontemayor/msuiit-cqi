@@ -35,4 +35,8 @@ export class CreateCurriculumCourseDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isPloAssessmentTarget?: boolean;
 }

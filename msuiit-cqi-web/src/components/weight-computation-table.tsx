@@ -2,6 +2,7 @@
 
 import { Fragment, useState } from 'react';
 import type { PloSummaryRow } from '@/lib/mapping-summary';
+import type { DisplayCodes } from '@/lib/api';
 
 function weighted(
   counts: { I: number; P: number; D: number },
@@ -16,9 +17,11 @@ function weighted(
 export function WeightComputationTable({
   rows,
   weights,
+  displayCodes,
 }: {
   rows: PloSummaryRow[];
   weights: Record<'I' | 'P' | 'D', number>;
+  displayCodes: DisplayCodes;
 }) {
   const [expandedPloId, setExpandedPloId] = useState<string | null>(null);
 
@@ -28,9 +31,9 @@ export function WeightComputationTable({
         <thead className="bg-neutral-100 dark:bg-neutral-900">
           <tr>
             <th className="px-3 py-2 text-left">PLO</th>
-            <th className="px-3 py-2 text-right">I (&times;{weights.I})</th>
-            <th className="px-3 py-2 text-right">P (&times;{weights.P})</th>
-            <th className="px-3 py-2 text-right">D (&times;{weights.D})</th>
+            <th className="px-3 py-2 text-right">{displayCodes.I} (&times;{weights.I})</th>
+            <th className="px-3 py-2 text-right">{displayCodes.P} (&times;{weights.P})</th>
+            <th className="px-3 py-2 text-right">{displayCodes.D} (&times;{weights.D})</th>
             <th className="px-3 py-2 text-right">Weighted Total</th>
           </tr>
         </thead>
@@ -76,9 +79,9 @@ export function WeightComputationTable({
                           <thead>
                             <tr className="text-neutral-500 dark:text-neutral-400">
                               <th className="px-2 py-1 text-left font-medium">Course</th>
-                              <th className="px-2 py-1 text-right font-medium">I (&times;{weights.I})</th>
-                              <th className="px-2 py-1 text-right font-medium">P (&times;{weights.P})</th>
-                              <th className="px-2 py-1 text-right font-medium">D (&times;{weights.D})</th>
+                              <th className="px-2 py-1 text-right font-medium">{displayCodes.I} (&times;{weights.I})</th>
+                              <th className="px-2 py-1 text-right font-medium">{displayCodes.P} (&times;{weights.P})</th>
+                              <th className="px-2 py-1 text-right font-medium">{displayCodes.D} (&times;{weights.D})</th>
                               <th className="px-2 py-1 text-right font-medium">Course Subtotal</th>
                             </tr>
                           </thead>

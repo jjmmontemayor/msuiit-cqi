@@ -67,12 +67,19 @@ enum MappingLevelCode {
 // applicable weight is looked up by (the mapping's curriculum version's
 // program, code) in the reporting views and the admin weight-computation
 // table.
+//
+// `code` (the I/P/D enum) is the stable internal key -- it's what
+// clo_plo_mappings.level_code actually stores, so it can't change without a
+// data migration. `displayCode` is what the UI actually shows in badges and
+// selects, and is program-configurable (e.g. a program could show "B/A/M"
+// instead of "I/P/D") -- defaults to the enum's own letter at creation.
 model MappingLevel {
-  id        String           @id @default(uuid())
-  programId String           @map("program_id")
-  code      MappingLevelCode
-  label     String
-  weight    Int
+  id          String           @id @default(uuid())
+  programId   String           @map("program_id")
+  code        MappingLevelCode
+  displayCode String           @map("display_code")
+  label       String
+  weight      Int
 
   program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
 
@@ -120,14 +127,19 @@ model AcademicTerm {
 // ---------------------------------------------------------------------------
 
 model CurriculumCourse {
-  id            String  @id @default(uuid())
-  programId     String  @map("program_id")
-  courseId      String  @map("course_id")
-  electiveGroup String? @map("elective_group")
-  yearLevel     Int?    @map("year_level")
-  term          String?
-  displayOrder  Int     @default(0) @map("display_order")
-  isActive      Boolean @default(true) @map("is_active")
+  id                     String  @id @default(uuid())
+  programId              String  @map("program_id")
+  courseId               String  @map("course_id")
+  electiveGroup          String? @map("elective_group")
+  yearLevel              Int?    @map("year_level")
+  term                   String?
+  displayOrder           Int     @default(0) @map("display_order")
+  isActive               Boolean @default(true) @map("is_active")
+  // Designates this course (within this program's curriculum) as one whose
+  // CLO-PLO mappings are the ones formally used for PLO assessment/reporting,
+  // as opposed to every course that happens to have a mapping. Lets the
+  // CLO-PLO mapping tab highlight and filter down to just these courses.
+  isPloAssessmentTarget  Boolean @default(false) @map("is_plo_assessment_target")
 
   program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
   course  Course  @relation(fields: [courseId], references: [id], onDelete: Restrict)

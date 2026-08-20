@@ -4,9 +4,9 @@ import { CreateProgramDto } from './dto/create-program.dto';
 import { UpdateProgramDto } from './dto/update-program.dto';
 
 const DEFAULT_MAPPING_LEVELS = [
-  { code: 'I' as const, label: 'Introduced', weight: 1 },
-  { code: 'P' as const, label: 'Practiced', weight: 2 },
-  { code: 'D' as const, label: 'Demonstrated', weight: 3 },
+  { code: 'I' as const, displayCode: 'I', label: 'Introduced', weight: 1 },
+  { code: 'P' as const, displayCode: 'P', label: 'Practiced', weight: 2 },
+  { code: 'D' as const, displayCode: 'D', label: 'Demonstrated', weight: 3 },
 ];
 
 @Injectable()

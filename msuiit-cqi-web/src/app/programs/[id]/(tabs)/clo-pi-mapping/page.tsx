@@ -1,12 +1,15 @@
 import Link from 'next/link';
+import { Fragment } from 'react';
 import { notFound } from 'next/navigation';
 import {
   apiFetch,
   ApiError,
+  buildDisplayCodes,
   type Clo,
   type CurriculumVersion,
   type CloPloMapping,
   type Course,
+  type MappingLevel,
   type Plo,
   type Program,
 } from '@/lib/api';
@@ -39,10 +42,12 @@ export default async function CloPiMappingPage({
   const { curriculumVersionId: versionIdParam } = await searchParams;
   const program = await getProgram(id);
 
-  const [curriculumVersions, plos] = await Promise.all([
+  const [curriculumVersions, plos, mappingLevels] = await Promise.all([
     apiFetch<CurriculumVersion[]>(`/curriculum-versions?programId=${program.id}`),
     apiFetch<Plo[]>(`/plos?programId=${program.id}`),
+    apiFetch<MappingLevel[]>(`/mapping-levels?programId=${program.id}`),
   ]);
+  const displayCodes = buildDisplayCodes(mappingLevels);
 
   if (curriculumVersions.length === 0) {
     return (
@@ -139,7 +144,7 @@ export default async function CloPiMappingPage({
                   return (
                     <th
                       key={plo.id}
-                      colSpan={Math.max(pis.length, 1)}
+                      colSpan={1 + pis.length}
                       className="border-l border-neutral-200 px-3 py-2 text-center dark:border-neutral-800"
                       title={plo.description}
                     >
@@ -151,25 +156,24 @@ export default async function CloPiMappingPage({
               <tr>
                 {plos.map((plo) => {
                   const pis = piByPlo.get(plo.id) ?? [];
-                  return pis.length === 0 ? (
-                    <th
-                      key={plo.id}
-                      className="w-20 border-l border-neutral-200 px-2 py-1.5 text-center text-xs font-medium text-neutral-500 dark:border-neutral-800 dark:text-neutral-400"
-                    >
-                      &mdash;
-                    </th>
-                  ) : (
-                    pis.map((pi, piIdx) => (
+                  return (
+                    <Fragment key={plo.id}>
                       <th
-                        key={pi.id}
-                        title={pi.description}
-                        className={`w-20 px-2 py-1.5 text-center text-xs font-medium text-neutral-500 dark:text-neutral-400 ${
-                          piIdx === 0 ? 'border-l border-neutral-200 dark:border-neutral-800' : ''
-                        }`}
+                        title="Mapping level (set on the CLO-PLO Mapping tab)"
+                        className="w-16 border-l border-neutral-200 px-2 py-1.5 text-center text-xs font-medium text-neutral-500 dark:border-neutral-800 dark:text-neutral-400"
                       >
-                        {pi.code}
+                        Level
                       </th>
-                    ))
+                      {pis.map((pi) => (
+                        <th
+                          key={pi.id}
+                          title={pi.description}
+                          className="w-20 px-2 py-1.5 text-center text-xs font-medium text-neutral-500 dark:text-neutral-400"
+                        >
+                          {pi.code}
+                        </th>
+                      ))}
+                    </Fragment>
                   );
                 })}
               </tr>
@@ -201,52 +205,44 @@ export default async function CloPiMappingPage({
                       const mapping = mappingByCloAndPlo.get(`${clo.id}::${plo.id}`);
                       const pis = piByPlo.get(plo.id) ?? [];
 
-                      if (!mapping) {
-                        return (
-                          <td
-                            key={plo.id}
-                            colSpan={Math.max(pis.length, 1)}
-                            className="border-l border-neutral-200 px-2 py-1.5 text-center text-neutral-300 dark:border-neutral-800 dark:text-neutral-700"
-                          >
-                            &mdash;
+                      return (
+                        <Fragment key={plo.id}>
+                          <td className="border-l border-neutral-200 px-2 py-1.5 text-center dark:border-neutral-800">
+                            {mapping ? (
+                              <span
+                                className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium ${LEVEL_BADGE_CLASSES[mapping.levelCode]}`}
+                                title="Mapping level, set on the CLO-PLO Mapping tab"
+                              >
+                                {displayCodes[mapping.levelCode]}
+                              </span>
+                            ) : (
+                              <span className="text-neutral-300 dark:text-neutral-700">&mdash;</span>
+                            )}
                           </td>
-                        );
-                      }
-
-                      if (pis.length === 0) {
-                        return (
-                          <td
-                            key={plo.id}
-                            className="border-l border-neutral-200 px-2 py-1.5 text-center dark:border-neutral-800"
-                          >
-                            <span
-                              className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium ${LEVEL_BADGE_CLASSES[mapping.levelCode]}`}
-                              title="No Performance Indicators defined for this PLO yet"
-                            >
-                              {mapping.levelCode}
-                            </span>
-                          </td>
-                        );
-                      }
-
-                      return pis.map((pi, piIdx) => (
-                        <td
-                          key={pi.id}
-                          className={`px-1 py-1.5 align-top ${
-                            piIdx === 0 ? 'border-l border-neutral-200 dark:border-neutral-800' : ''
-                          }`}
-                        >
-                          <PiToggleCell
-                            programCode={program.code}
-                            mappingId={mapping.id}
-                            piId={pi.id}
-                            isSelected={mapping.piId === pi.id}
-                            initialAssessmentMethod={
-                              mapping.piId === pi.id ? mapping.assessmentMethod : null
-                            }
-                          />
-                        </td>
-                      ));
+                          {pis.map((pi) =>
+                            mapping ? (
+                              <td key={pi.id} className="px-1 py-1.5 align-top">
+                                <PiToggleCell
+                                  programCode={program.code}
+                                  mappingId={mapping.id}
+                                  piId={pi.id}
+                                  isSelected={mapping.piId === pi.id}
+                                  initialAssessmentMethod={
+                                    mapping.piId === pi.id ? mapping.assessmentMethod : null
+                                  }
+                                />
+                              </td>
+                            ) : (
+                              <td
+                                key={pi.id}
+                                className="px-2 py-1.5 text-center text-neutral-300 dark:text-neutral-700"
+                              >
+                                &mdash;
+                              </td>
+                            ),
+                          )}
+                        </Fragment>
+                      );
                     })}
                   </tr>
                 )),

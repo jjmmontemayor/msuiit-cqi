@@ -20,14 +20,15 @@ import {
   createCurriculumVersion,
   createPlo,
   deleteCurriculumVersion,
-  deletePlo,
   linkExistingCourse,
+  setPloAssessmentTarget,
   unlinkCourse,
   updateAttainmentBenchmark,
   updateMappingLevelWeights,
   updateProgramIdentity,
 } from '../../actions';
 import { BatchRow } from './batch-row';
+import { PloRow } from './plo-row';
 
 export const dynamic = 'force-dynamic';
 
@@ -325,34 +326,50 @@ export default async function AdminProgramPage({
       </section>
 
       <section className="rounded-md border border-neutral-200 p-4 dark:border-neutral-800">
-        <h2 className="text-lg font-medium">Mapping Level Weights</h2>
+        <h2 className="text-lg font-medium">Mapping Level Weights &amp; Codes</h2>
         <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-          Used to compute weighted PLO/CLO attainment from I/P/D mapping levels
-          — changing these affects every attainment report and the CLO-PLO
-          weight computation table immediately.
+          Used to compute weighted PLO/CLO attainment from the I/P/D mapping
+          levels — changing weights affects every attainment report and the
+          CLO-PLO weight computation table immediately. The display code is
+          what shows in mapping badges/selects (defaults to I/P/D, but can be
+          renamed per program).
         </p>
         <form
           action={updateMappingLevelWeights.bind(null, program.id)}
           className="mt-3 flex flex-wrap items-end gap-4"
         >
           {mappingLevels.map((level) => (
-            <label key={level.code} className="text-sm">
-              {level.label} ({level.code})
-              <input
-                name={`weight_${level.code}`}
-                type="number"
-                min={1}
-                required
-                defaultValue={level.weight}
-                className="mt-1 block w-24 rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-              />
-            </label>
+            <div key={level.code} className="flex items-end gap-2">
+              <label className="text-sm">
+                {level.label} ({level.code})
+                <br />
+                Display code
+                <input
+                  name={`displayCode_${level.code}`}
+                  required
+                  maxLength={10}
+                  defaultValue={level.displayCode}
+                  className="mt-1 block w-20 rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                />
+              </label>
+              <label className="text-sm">
+                Weight
+                <input
+                  name={`weight_${level.code}`}
+                  type="number"
+                  min={1}
+                  required
+                  defaultValue={level.weight}
+                  className="mt-1 block w-20 rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                />
+              </label>
+            </div>
           ))}
           <button
             type="submit"
             className="rounded-md bg-neutral-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"
           >
-            Save Weights
+            Save
           </button>
         </form>
       </section>
@@ -395,22 +412,7 @@ export default async function AdminProgramPage({
         ) : (
           <ul className="mt-3 divide-y divide-neutral-200 rounded-md border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
             {plos.map((plo) => (
-              <li key={plo.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
-                <div className="text-sm">
-                  <span className="font-medium">{plo.code}</span>
-                  <span className="ml-2 text-neutral-600 dark:text-neutral-400">
-                    {plo.description}
-                  </span>
-                </div>
-                <form action={deletePlo.bind(null, program.id, plo.id)}>
-                  <button
-                    type="submit"
-                    className="shrink-0 text-sm text-red-600 hover:underline dark:text-red-400"
-                  >
-                    Delete
-                  </button>
-                </form>
-              </li>
+              <PloRow key={plo.id} programId={program.id} plo={plo} />
             ))}
           </ul>
         )}
@@ -491,15 +493,39 @@ export default async function AdminProgramPage({
                   {cc.electiveGroup && (
                     <span className="ml-2 text-neutral-400">{cc.electiveGroup}</span>
                   )}
+                  {cc.isPloAssessmentTarget && (
+                    <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
+                      PLO Assessment
+                    </span>
+                  )}
                 </Link>
-                <form action={unlinkCourse.bind(null, program.id, cc.id)}>
-                  <button
-                    type="submit"
-                    className="shrink-0 text-sm text-red-600 hover:underline dark:text-red-400"
+                <div className="flex shrink-0 items-center gap-3">
+                  <form
+                    action={setPloAssessmentTarget.bind(
+                      null,
+                      program.id,
+                      cc.id,
+                      !cc.isPloAssessmentTarget,
+                    )}
                   >
-                    Remove
-                  </button>
-                </form>
+                    <button
+                      type="submit"
+                      className="text-sm text-neutral-500 hover:underline dark:text-neutral-400"
+                    >
+                      {cc.isPloAssessmentTarget
+                        ? 'Unmark PLO assessment'
+                        : 'Mark for PLO assessment'}
+                    </button>
+                  </form>
+                  <form action={unlinkCourse.bind(null, program.id, cc.id)}>
+                    <button
+                      type="submit"
+                      className="text-sm text-red-600 hover:underline dark:text-red-400"
+                    >
+                      Remove
+                    </button>
+                  </form>
+                </div>
               </li>
             ))}
           </ul>

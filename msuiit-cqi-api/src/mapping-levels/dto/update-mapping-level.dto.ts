@@ -10,4 +10,9 @@ export class UpdateMappingLevelDto {
   @IsString()
   @MaxLength(50)
   label?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  displayCode?: string;
 }

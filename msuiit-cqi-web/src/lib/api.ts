@@ -63,6 +63,7 @@ export interface CurriculumCourse {
   term: string | null;
   displayOrder: number;
   isActive: boolean;
+  isPloAssessmentTarget: boolean;
   course: Course & { clos: Clo[] };
 }
 
@@ -104,8 +105,19 @@ export interface MappingLevel {
   id: string;
   programId: string;
   code: 'I' | 'P' | 'D';
+  displayCode: string;
   label: string;
   weight: number;
+}
+
+export type DisplayCodes = Record<'I' | 'P' | 'D', string>;
+
+export function buildDisplayCodes(mappingLevels: MappingLevel[]): DisplayCodes {
+  const codes = { I: 'I', P: 'P', D: 'D' };
+  for (const level of mappingLevels) {
+    codes[level.code] = level.displayCode;
+  }
+  return codes;
 }
 
 export interface Cohort {

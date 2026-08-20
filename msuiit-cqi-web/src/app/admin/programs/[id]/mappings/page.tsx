@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { apiFetch, ApiError, type Clo, type CurriculumVersion, type CloPloMapping, type Course, type MappingLevel, type Plo, type Program } from '@/lib/api';
+import { apiFetch, ApiError, buildDisplayCodes, type Clo, type CurriculumCourse, type CurriculumVersion, type CloPloMapping, type Course, type MappingLevel, type Plo, type Program } from '@/lib/api';
 import { MappingCell } from './mapping-cell';
+import { LEVEL_TEXT_CLASSES } from '@/lib/mapping-level-colors';
 import { copyMappingsFromVersion } from './actions';
 import { buildPloSummary } from '@/lib/mapping-summary';
 import { MappingSummaryTable } from '@/components/mapping-summary-table';
@@ -27,21 +28,27 @@ export default async function AdminMappingsPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ curriculumVersionId?: string }>;
+  searchParams: Promise<{ curriculumVersionId?: string; onlyPloAssessment?: string }>;
 }) {
   const { id } = await params;
-  const { curriculumVersionId: versionIdParam } = await searchParams;
+  const { curriculumVersionId: versionIdParam, onlyPloAssessment } = await searchParams;
   const program = await getProgram(id);
 
-  const [curriculumVersions, plos, mappingLevels] = await Promise.all([
+  const [curriculumVersions, plos, mappingLevels, curriculumCourses] = await Promise.all([
     apiFetch<CurriculumVersion[]>(`/curriculum-versions?programId=${program.id}`),
     apiFetch<Plo[]>(`/plos?programId=${program.id}`),
     apiFetch<MappingLevel[]>(`/mapping-levels?programId=${program.id}`),
+    apiFetch<CurriculumCourse[]>(`/curriculum-courses?programId=${program.id}`),
   ]);
+  const ploAssessmentCourseIds = new Set(
+    curriculumCourses.filter((cc) => cc.isPloAssessmentTarget).map((cc) => cc.courseId),
+  );
+  const showOnlyPloAssessment = onlyPloAssessment === '1';
   const weights = Object.fromEntries(mappingLevels.map((l) => [l.code, l.weight])) as Record<
     'I' | 'P' | 'D',
     number
   >;
+  const displayCodes = buildDisplayCodes(mappingLevels);
 
   if (curriculumVersions.length === 0) {
     return (
@@ -60,12 +67,15 @@ export default async function AdminMappingsPage({
   }
 
   const selectedVersionId = versionIdParam || curriculumVersions[0].id;
-  const [courses, mappings] = await Promise.all([
+  const [allCourses, mappings] = await Promise.all([
     apiFetch<CourseWithClos[]>(
       `/courses?programId=${program.id}&curriculumVersionId=${selectedVersionId}`,
     ),
     apiFetch<CloPloMapping[]>(`/mappings?curriculumVersionId=${selectedVersionId}`),
   ]);
+  const courses = showOnlyPloAssessment
+    ? allCourses.filter((c) => ploAssessmentCourseIds.has(c.id))
+    : allCourses;
 
   const levelByCloAndPlo = new Map<string, CloPloMapping>();
   for (const m of mappings) {
@@ -95,9 +105,14 @@ export default async function AdminMappingsPage({
         </h1>
         <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
           Click a cell to set the mapping level:{' '}
-          <span className="font-medium text-blue-600 dark:text-blue-400">I = Introduced</span>,{' '}
-          <span className="font-medium text-amber-600 dark:text-amber-400">P = Practiced</span>,{' '}
-          <span className="font-medium text-emerald-600 dark:text-emerald-400">D = Demonstrated</span>,
+          {mappingLevels.map((level) => (
+            <span key={level.code}>
+              <span className={`font-medium ${LEVEL_TEXT_CLASSES[level.code]}`}>
+                {level.displayCode} = {level.label}
+              </span>
+              {', '}
+            </span>
+          ))}
           — = not mapped. Each curriculum version has its own mapping — changes save immediately.
         </p>
       </div>
@@ -117,6 +132,16 @@ export default async function AdminMappingsPage({
                 </option>
               ))}
             </select>
+          </label>
+          <label className="flex items-center gap-1.5 pb-1.5 text-sm">
+            <input
+              type="checkbox"
+              name="onlyPloAssessment"
+              value="1"
+              defaultChecked={showOnlyPloAssessment}
+              className="rounded border-neutral-300 dark:border-neutral-700"
+            />
+            Only PLO assessment courses
           </label>
           <button
             type="submit"
@@ -189,7 +214,16 @@ export default async function AdminMappingsPage({
                     {cloIdx === 0 && (
                       <td
                         rowSpan={course.clos.length}
-                        className="sticky left-0 z-10 w-36 whitespace-nowrap bg-white px-3 py-1.5 align-top font-medium dark:bg-neutral-950"
+                        title={
+                          ploAssessmentCourseIds.has(course.id)
+                            ? 'Designated for formal PLO assessment'
+                            : undefined
+                        }
+                        className={`sticky left-0 z-10 w-36 whitespace-nowrap px-3 py-1.5 align-top font-medium ${
+                          ploAssessmentCourseIds.has(course.id)
+                            ? 'bg-emerald-50 dark:bg-emerald-950/40'
+                            : 'bg-white dark:bg-neutral-950'
+                        }`}
                       >
                         <Link
                           href={`/programs/${program.code}/courses/${course.id}`}
@@ -222,6 +256,7 @@ export default async function AdminMappingsPage({
                             cloId={clo.id}
                             ploId={plo.id}
                             initialLevel={mapping?.levelCode ?? ''}
+                            displayCodes={displayCodes}
                           />
                         </td>
                       );
@@ -242,7 +277,7 @@ export default async function AdminMappingsPage({
             to its counts.
           </p>
           <div className="mt-3">
-            <MappingSummaryTable rows={summaryRows} />
+            <MappingSummaryTable rows={summaryRows} displayCodes={displayCodes} />
           </div>
         </div>
       )}
@@ -269,12 +304,12 @@ export default async function AdminMappingsPage({
             </Link>
           </div>
           <p className="mt-1 text-sm text-neutral-500">
-            Current weights: I = {weights.I}, P = {weights.P}, D = {weights.D}
+            Current weights: {displayCodes.I} = {weights.I}, {displayCodes.P} = {weights.P}, {displayCodes.D} = {weights.D}
             . Same weights used to compute PLO attainment. Click a row to see
             the subtotal per course.
           </p>
           <div className="mt-3">
-            <WeightComputationTable rows={summaryRows} weights={weights} />
+            <WeightComputationTable rows={summaryRows} weights={weights} displayCodes={displayCodes} />
           </div>
         </div>
       )}

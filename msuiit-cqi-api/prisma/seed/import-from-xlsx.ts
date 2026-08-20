@@ -105,9 +105,9 @@ async function main() {
   // created through the API) -- this script bypasses that service, so it
   // seeds the same defaults directly.
   for (const level of [
-    { code: MappingLevelCode.I, label: 'Introduced', weight: 1 },
-    { code: MappingLevelCode.P, label: 'Practiced', weight: 2 },
-    { code: MappingLevelCode.D, label: 'Demonstrated', weight: 3 },
+    { code: MappingLevelCode.I, displayCode: 'I', label: 'Introduced', weight: 1 },
+    { code: MappingLevelCode.P, displayCode: 'P', label: 'Practiced', weight: 2 },
+    { code: MappingLevelCode.D, displayCode: 'D', label: 'Demonstrated', weight: 3 },
   ] as const) {
     await prisma.mappingLevel.upsert({
       where: { programId_code: { programId: program.id, code: level.code } },

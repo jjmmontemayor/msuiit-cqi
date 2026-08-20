@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { MappingCell } from '../../../../admin/programs/[id]/mappings/mapping-cell';
 import { CloTextCell } from './clo-text-cell';
 import { LEVEL_BADGE_CLASSES } from '@/lib/mapping-level-colors';
-import type { Clo, CloPloMapping, Course, Plo } from '@/lib/api';
+import type { Clo, CloPloMapping, Course, DisplayCodes, Plo } from '@/lib/api';
 
 type CourseWithClos = Course & { clos: Clo[] };
 
@@ -48,6 +48,8 @@ export function MappingTable({
   courses,
   plos,
   mappings,
+  ploAssessmentCourseIds,
+  displayCodes,
 }: {
   programId: string;
   programCode: string;
@@ -55,6 +57,8 @@ export function MappingTable({
   courses: CourseWithClos[];
   plos: Plo[];
   mappings: CloPloMapping[];
+  ploAssessmentCourseIds: string[];
+  displayCodes: DisplayCodes;
 }) {
   const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
 
@@ -88,7 +92,16 @@ export function MappingTable({
               {cloIdx === 0 && (
                 <td
                   rowSpan={course.clos.length}
-                  className="sticky left-0 z-10 w-36 whitespace-nowrap bg-white px-3 py-1.5 align-top font-medium dark:bg-neutral-950"
+                  title={
+                    ploAssessmentCourseIds.includes(course.id)
+                      ? 'Designated for formal PLO assessment'
+                      : undefined
+                  }
+                  className={`sticky left-0 z-10 w-36 whitespace-nowrap px-3 py-1.5 align-top font-medium ${
+                    ploAssessmentCourseIds.includes(course.id)
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40'
+                      : 'bg-white dark:bg-neutral-950'
+                  }`}
                 >
                   <div className="flex items-center gap-1.5">
                     <Link
@@ -145,13 +158,14 @@ export function MappingTable({
                         cloId={clo.id}
                         ploId={plo.id}
                         initialLevel={mapping?.levelCode ?? ''}
+                        displayCodes={displayCodes}
                       />
                     ) : mapping ? (
                       <span
                         className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium ${LEVEL_BADGE_CLASSES[mapping.levelCode]}`}
                         title={mapping.assessmentMethod ?? undefined}
                       >
-                        {mapping.levelCode}
+                        {displayCodes[mapping.levelCode]}
                       </span>
                     ) : null}
                   </td>
