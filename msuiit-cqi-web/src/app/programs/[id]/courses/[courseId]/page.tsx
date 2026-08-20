@@ -122,12 +122,7 @@ export default async function CourseDetailsPage({
       </section>
 
       <section>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-medium">Course Learning Outcomes</h2>
-          {course.clos.length > 0 && (
-            <DownloadAttainmentTemplate courseCode={course.code} clos={course.clos} />
-          )}
-        </div>
+        <h2 className="text-lg font-medium">Course Learning Outcomes</h2>
         {course.clos.length === 0 ? (
           <p className="mt-2 text-sm text-neutral-500">No CLOs yet.</p>
         ) : (
@@ -224,6 +219,17 @@ export default async function CourseDetailsPage({
       </section>
 
       <section>
+        {course.clos.length > 0 && (
+          <div className="mb-3 rounded-md border border-neutral-200 p-4 dark:border-neutral-800">
+            <h3 className="text-sm font-medium">1. Download a blank attainment sheet</h3>
+            <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+              Fill this in with student scores, then upload the same file below.
+            </p>
+            <div className="mt-2">
+              <DownloadAttainmentTemplate courseCode={course.code} clos={course.clos} />
+            </div>
+          </div>
+        )}
         <AttainmentUploadForm
           programId={program.id}
           courseId={course.id}

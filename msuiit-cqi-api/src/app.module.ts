@@ -10,6 +10,7 @@ import { ClosModule } from './clos/clos.module';
 import { PlosModule } from './plos/plos.module';
 import { PerformanceIndicatorsModule } from './performance-indicators/performance-indicators.module';
 import { MappingsModule } from './mappings/mappings.module';
+import { CloPiMappingsModule } from './clo-pi-mappings/clo-pi-mappings.module';
 import { MappingLevelsModule } from './mapping-levels/mapping-levels.module';
 import { CohortsModule } from './cohorts/cohorts.module';
 import { CurriculumVersionsModule } from './curriculum-versions/curriculum-versions.module';
@@ -39,6 +40,7 @@ import { AuthModule } from './auth/auth.module';
     PlosModule,
     PerformanceIndicatorsModule,
     MappingsModule,
+    CloPiMappingsModule,
     MappingLevelsModule,
     CohortsModule,
     CurriculumVersionsModule,

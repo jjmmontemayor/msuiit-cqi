@@ -35,7 +35,9 @@ export class CurriculumCoursesService {
       orderBy: [{ yearLevel: 'asc' }, { displayOrder: 'asc' }],
       include: {
         course: {
-          include: { clos: { where: cloWhere, orderBy: { displayOrder: 'asc' } } },
+          include: {
+            clos: { where: cloWhere, orderBy: { displayOrder: 'asc' } },
+          },
         },
       },
     });

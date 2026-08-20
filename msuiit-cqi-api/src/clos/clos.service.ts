@@ -85,6 +85,9 @@ export class ClosService {
     const sourceMappings = await this.prisma.cloPloMapping.findMany({
       where: { cloId: id },
     });
+    const sourcePiMappings = await this.prisma.cloPiMapping.findMany({
+      where: { cloId: id },
+    });
 
     return this.prisma.$transaction(async (tx) => {
       const created = await tx.clo.create({
@@ -105,7 +108,17 @@ export class ClosService {
             ploId: m.ploId,
             curriculumVersionId: dto.curriculumVersionId,
             levelCode: m.levelCode,
+          })),
+        });
+      }
+
+      if (sourcePiMappings.length > 0) {
+        await tx.cloPiMapping.createMany({
+          data: sourcePiMappings.map((m) => ({
+            cloId: created.id,
             piId: m.piId,
+            curriculumVersionId: dto.curriculumVersionId,
+            levelCode: m.levelCode,
             assessmentMethod: m.assessmentMethod,
           })),
         });

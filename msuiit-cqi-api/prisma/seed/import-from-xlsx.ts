@@ -105,9 +105,24 @@ async function main() {
   // created through the API) -- this script bypasses that service, so it
   // seeds the same defaults directly.
   for (const level of [
-    { code: MappingLevelCode.I, displayCode: 'I', label: 'Introduced', weight: 1 },
-    { code: MappingLevelCode.P, displayCode: 'P', label: 'Practiced', weight: 2 },
-    { code: MappingLevelCode.D, displayCode: 'D', label: 'Demonstrated', weight: 3 },
+    {
+      code: MappingLevelCode.I,
+      displayCode: 'I',
+      label: 'Introduced',
+      weight: 1,
+    },
+    {
+      code: MappingLevelCode.P,
+      displayCode: 'P',
+      label: 'Practiced',
+      weight: 2,
+    },
+    {
+      code: MappingLevelCode.D,
+      displayCode: 'D',
+      label: 'Demonstrated',
+      weight: 3,
+    },
   ] as const) {
     await prisma.mappingLevel.upsert({
       where: { programId_code: { programId: program.id, code: level.code } },
@@ -386,11 +401,30 @@ async function main() {
           ploId: plo.id,
           curriculumVersionId: curriculumVersion.id,
           levelCode: level,
-          piId: matchingPi ? piByCode.get(matchingPi.code)!.id : null,
-          assessmentMethod: matchingPi ? PI_ASSESSMENT_METHOD : null,
         },
       });
       mappingCount += 1;
+
+      if (matchingPi) {
+        const pi = piByCode.get(matchingPi.code)!;
+        await prisma.cloPiMapping.upsert({
+          where: {
+            cloId_piId_curriculumVersionId: {
+              cloId: clo.id,
+              piId: pi.id,
+              curriculumVersionId: curriculumVersion.id,
+            },
+          },
+          update: {},
+          create: {
+            cloId: clo.id,
+            piId: pi.id,
+            curriculumVersionId: curriculumVersion.id,
+            levelCode: level,
+            assessmentMethod: PI_ASSESSMENT_METHOD,
+          },
+        });
+      }
     }
   }
 

@@ -33,7 +33,7 @@ export function AttainmentUploadForm({
 
   return (
     <div>
-      <h2 className="text-lg font-medium">Upload CLO Attainment Sheet</h2>
+      <h2 className="text-lg font-medium">2. Upload the completed attainment sheet</h2>
       <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
         For the faculty teaching this course this semester. Same layout as
         the source workbook&apos;s CLO_Attainments sheet (ID No. / Student

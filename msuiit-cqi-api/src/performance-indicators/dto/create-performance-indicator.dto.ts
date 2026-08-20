@@ -18,6 +18,10 @@ export class CreatePerformanceIndicatorDto {
   description!: string;
 
   @IsOptional()
+  @IsString()
+  assessment?: string;
+
+  @IsOptional()
   @IsInt()
   displayOrder?: number;
 }

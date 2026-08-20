@@ -19,7 +19,9 @@ export class LearningPlanEntriesService {
   }
 
   async findOne(id: string) {
-    const entry = await this.prisma.learningPlanEntry.findUnique({ where: { id } });
+    const entry = await this.prisma.learningPlanEntry.findUnique({
+      where: { id },
+    });
     if (!entry) {
       throw new NotFoundException(`Learning plan entry ${id} not found`);
     }

@@ -158,7 +158,9 @@ export class AttainmentUploadsService {
 
         let clo: { id: string } | null = null;
         if (cohortId) {
-          const cohort = await tx.cohort.findUnique({ where: { id: cohortId } });
+          const cohort = await tx.cohort.findUnique({
+            where: { id: cohortId },
+          });
           if (cohort?.curriculumVersionId) {
             clo = await tx.clo.findUnique({
               where: {

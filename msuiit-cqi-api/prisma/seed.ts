@@ -3,9 +3,19 @@ import { MappingLevelCode, PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 const DEFAULT_MAPPING_LEVELS = [
-  { code: MappingLevelCode.I, displayCode: 'I', label: 'Introduced', weight: 1 },
+  {
+    code: MappingLevelCode.I,
+    displayCode: 'I',
+    label: 'Introduced',
+    weight: 1,
+  },
   { code: MappingLevelCode.P, displayCode: 'P', label: 'Practiced', weight: 2 },
-  { code: MappingLevelCode.D, displayCode: 'D', label: 'Demonstrated', weight: 3 },
+  {
+    code: MappingLevelCode.D,
+    displayCode: 'D',
+    label: 'Demonstrated',
+    weight: 3,
+  },
 ] as const;
 
 // Backfill: mapping level weights and the attainment benchmark are
@@ -31,7 +41,9 @@ async function main() {
     });
   }
 
-  console.log(`Seeded mapping_levels and attainment_benchmarks for ${programs.length} program(s).`);
+  console.log(
+    `Seeded mapping_levels and attainment_benchmarks for ${programs.length} program(s).`,
+  );
 }
 
 main()

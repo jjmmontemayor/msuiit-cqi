@@ -1,4 +1,10 @@
-import { IsInt, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import {
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
 
 export class CreateLearningPlanEntryDto {
   @IsUUID()

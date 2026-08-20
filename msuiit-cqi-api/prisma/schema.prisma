@@ -164,15 +164,19 @@ model Plo {
 }
 
 model PerformanceIndicator {
-  id           String @id @default(uuid())
-  ploId        String @map("plo_id")
-  code         String
-  description  String
-  displayOrder Int    @default(0) @map("display_order")
+  id          String @id @default(uuid())
+  ploId       String @map("plo_id")
+  code        String
+  description String
+  // The assessment instrument used to measure this PI in general (e.g. "Board
+  // exam item analysis"), distinct from CloPiMapping.assessmentMethod which
+  // records how one specific CLO's evidence toward this PI is assessed.
+  assessment   String? @map("assessment")
+  displayOrder Int     @default(0) @map("display_order")
 
-  plo         Plo             @relation(fields: [ploId], references: [id], onDelete: Cascade)
-  cloMappings CloPloMapping[]
-  evaluations PiEvaluation[]
+  plo           Plo             @relation(fields: [ploId], references: [id], onDelete: Cascade)
+  cloPiMappings CloPiMapping[]
+  evaluations   PiEvaluation[]
 
   @@unique([ploId, code])
   @@map("performance_indicators")
@@ -197,6 +201,7 @@ model CurriculumVersion {
   cohorts        Cohort[]
   clos           Clo[]
   cloPloMappings CloPloMapping[]
+  cloPiMappings  CloPiMapping[]
 
   @@unique([programId, code])
   @@map("curriculum_versions")
@@ -221,6 +226,7 @@ model Clo {
   course            Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
   curriculumVersion CurriculumVersion @relation(fields: [curriculumVersionId], references: [id], onDelete: Cascade)
   ploMappings       CloPloMapping[]
+  piMappings        CloPiMapping[]
   attainments       CloAttainment[]
 
   @@unique([courseId, code, curriculumVersionId])
@@ -229,12 +235,10 @@ model Clo {
 
 // The CLO->PLO mapping level (I/P/D) is the primary fact — every course's
 // CLOs are mapped straight to all applicable PLOs (see the workbook's
-// `Mapping` sheet, which has no PI column at all). `piId` is an optional
-// refinement: once a specific CLO/PLO pairing has been elaborated to name
-// which Performance Indicator it evidences, the same pairing can
-// additionally be tagged with that PI and how it's assessed. Making PI
-// mandatory here would make it impossible to record a CLO->PLO mapping
-// before its PI-level refinement is done.
+// `Mapping` sheet, which has no PI column at all). PI-level refinement (which
+// PIs within that PLO the CLO evidences, and at what level) is recorded
+// separately in CloPiMapping, since a single CLO can evidence more than one
+// PI in the same PLO at different levels.
 //
 // `curriculumVersionId` scopes the mapping to a curriculum revision, the
 // same way Clo is scoped: curricula get revised over time, so the same CLO
@@ -247,16 +251,33 @@ model CloPloMapping {
   ploId               String           @map("plo_id")
   curriculumVersionId String           @map("curriculum_version_id")
   levelCode           MappingLevelCode @map("level_code")
-  piId                String?          @map("pi_id")
-  assessmentMethod    String?          @map("assessment_method")
 
-  clo               Clo                   @relation(fields: [cloId], references: [id], onDelete: Cascade)
-  plo               Plo                   @relation(fields: [ploId], references: [id], onDelete: Cascade)
-  curriculumVersion CurriculumVersion     @relation(fields: [curriculumVersionId], references: [id], onDelete: Cascade)
-  pi                PerformanceIndicator? @relation(fields: [piId], references: [id], onDelete: SetNull)
+  clo               Clo               @relation(fields: [cloId], references: [id], onDelete: Cascade)
+  plo               Plo               @relation(fields: [ploId], references: [id], onDelete: Cascade)
+  curriculumVersion CurriculumVersion @relation(fields: [curriculumVersionId], references: [id], onDelete: Cascade)
 
   @@unique([cloId, ploId, curriculumVersionId])
   @@map("clo_plo_mappings")
+}
+
+// PI-level refinement of a CLO->PLO mapping: requires the CLO to already map
+// to the PI's PLO (see CloPloMapping) before it can be set, but tracks its
+// own I/P/D level and assessment method per (CLO, PI) pair, independent of
+// the other PIs under the same PLO.
+model CloPiMapping {
+  id                  String           @id @default(uuid())
+  cloId               String           @map("clo_id")
+  piId                String           @map("pi_id")
+  curriculumVersionId String           @map("curriculum_version_id")
+  levelCode           MappingLevelCode @map("level_code")
+  assessmentMethod    String?          @map("assessment_method")
+
+  clo               Clo                  @relation(fields: [cloId], references: [id], onDelete: Cascade)
+  pi                PerformanceIndicator @relation(fields: [piId], references: [id], onDelete: Cascade)
+  curriculumVersion CurriculumVersion    @relation(fields: [curriculumVersionId], references: [id], onDelete: Cascade)
+
+  @@unique([cloId, piId, curriculumVersionId])
+  @@map("clo_pi_mappings")
 }
 
 // ---------------------------------------------------------------------------

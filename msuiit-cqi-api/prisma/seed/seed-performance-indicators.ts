@@ -125,7 +125,9 @@ async function main() {
     }
   }
 
-  console.log(`Upserted ${upserted} performance indicators across ${plos.length} PLOs.`);
+  console.log(
+    `Upserted ${upserted} performance indicators across ${plos.length} PLOs.`,
+  );
 }
 
 main()

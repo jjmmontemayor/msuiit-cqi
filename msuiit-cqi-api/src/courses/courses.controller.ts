@@ -27,7 +27,11 @@ export class CoursesController {
     @Query('cohortId') cohortId?: string,
     @Query('curriculumVersionId') curriculumVersionId?: string,
   ) {
-    return this.coursesService.findAll(programId, cohortId, curriculumVersionId);
+    return this.coursesService.findAll(
+      programId,
+      cohortId,
+      curriculumVersionId,
+    );
   }
 
   @Get(':id')

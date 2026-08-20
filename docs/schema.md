@@ -39,9 +39,12 @@ erDiagram
 
     PLOS ||--o{ PERFORMANCE_INDICATORS : "broken into"
     PLOS ||--o{ CLO_PLO_MAPPINGS : "mapped from"
-    PERFORMANCE_INDICATORS |o--o{ CLO_PLO_MAPPINGS : "optionally refines"
+    PERFORMANCE_INDICATORS ||--o{ CLO_PI_MAPPINGS : "refined by"
     CLOS ||--o{ CLO_PLO_MAPPINGS : "maps to"
+    CLOS ||--o{ CLO_PI_MAPPINGS : "maps to"
+    CURRICULUM_VERSIONS ||--o{ CLO_PI_MAPPINGS : owns
     MAPPING_LEVELS ||--o{ CLO_PLO_MAPPINGS : weights
+    MAPPING_LEVELS ||--o{ CLO_PI_MAPPINGS : weights
 
     COHORTS ||--o{ STUDENTS : groups
     STUDENTS ||--o{ ENROLLMENTS : has
@@ -102,6 +105,7 @@ erDiagram
         uuid plo_id FK
         text code "PI1.."
         text description
+        text assessment "nullable, general instrument"
         int display_order
     }
     CURRICULUM_VERSIONS {
@@ -124,7 +128,13 @@ erDiagram
         uuid plo_id FK
         uuid curriculum_version_id FK
         text level_code FK
-        uuid pi_id FK "nullable"
+    }
+    CLO_PI_MAPPINGS {
+        uuid id PK
+        uuid clo_id FK
+        uuid pi_id FK
+        uuid curriculum_version_id FK
+        text level_code FK
         text assessment_method "nullable"
     }
     COHORTS {
@@ -221,7 +231,10 @@ erDiagram
 
 - **`plos`** and **`performance_indicators`** are scoped per program
   (`UNIQUE(program_id, code)` / `UNIQUE(plo_id, code)`) since PLO/PI numbering restarts
-  per program.
+  per program. `performance_indicators.assessment` is a general, nullable description of
+  the instrument used to measure that PI (e.g. "Board exam item analysis") — distinct
+  from `clo_pi_mappings.assessment_method`, which records how one specific CLO's
+  evidence toward that PI is assessed.
 - **`curriculum_versions`** models a curriculum revision (e.g. "2018 Rev.3", matching
   how the source BOR curriculum document versions the whole program) as a first-class,
   program-scoped entity (`UNIQUE(program_id, code)`). It, not `cohorts`, is what
@@ -230,18 +243,22 @@ erDiagram
   (`UNIQUE(course_id, code, curriculum_version_id)`), matching the workbook where every
   course independently defines CLO1–CLO3, generalized from "per batch" to "per
   curriculum revision."
-- **`clo_plo_mappings`** is the single source of truth for outcome mapping, and links
-  a CLO straight to a PLO (`plo_id` required) — matching the `Mapping` sheet, which
-  maps every course's CLOs to all 11 PLOs directly with no PI column. `pi_id` is
-  **nullable**: it's only set once a specific CLO/PLO pairing has been refined to name
-  which Performance Indicator it evidences (all 11 PLOs now have PIs defined — see
-  `prisma/seed/seed-performance-indicators.ts`, sourced from the BSCS curriculum
-  document's §6.4 CS01–CS11 — but not every mapping has been tagged with one yet).
-  Making `pi_id` required would make it impossible to record a CLO→PLO mapping before
-  its PI-level refinement is done. `assessment_method` captures the sheet's free-text
-  "Assessment Methods" column, when known. A dedicated CLO–PI mapping tab (separate
-  from the CLO–PLO tab) lets faculty set `pi_id`/`assessment_method` without
-  re-picking the I/P/D level each time.
+- **`clo_plo_mappings`** is the single source of truth for the primary outcome mapping,
+  and links a CLO straight to a PLO (`plo_id` required) — matching the `Mapping` sheet,
+  which maps every course's CLOs to all 11 PLOs directly with no PI column.
+- **`clo_pi_mappings`** is the PI-level refinement, kept as its own table (not a nullable
+  `pi_id`/`assessment_method` pair on `clo_plo_mappings`) because a single CLO can
+  evidence more than one PI within the same PLO, each at a potentially different I/P/D
+  level — a `UNIQUE(clo_id, plo_id, curriculum_version_id)` mapping can't represent that.
+  `clo_pi_mappings` is keyed `UNIQUE(clo_id, pi_id, curriculum_version_id)` instead, so
+  each (CLO, PI) pair carries its own `level_code` and free-text `assessment_method`
+  (the sheet's "Assessment Methods" column, when known). The CLO-PI mapping tab
+  (separate from the CLO-PLO tab) only lets a PI's level be set once the CLO already
+  maps to that PI's PLO in `clo_plo_mappings` — PI-level refinement follows, not
+  replaces, the primary PLO-level mapping. PI definitions themselves (all 11 PLOs' PIs
+  — see `prisma/seed/seed-performance-indicators.ts`, sourced from the BSCS curriculum
+  document's §6.4 CS01–CS11) live in `performance_indicators` regardless of whether any
+  CLO has been mapped to them yet.
 - **Why `curriculum_versions` and not `cohorts` owns CLOs/mappings**: CLO/mapping
   definition work (writing CLOs, mapping them to PLOs/PIs) is independent of whether
   any batch exists yet or has been assigned to that curriculum — the two workflows run

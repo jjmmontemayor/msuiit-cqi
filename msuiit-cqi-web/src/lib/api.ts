@@ -98,6 +98,7 @@ export interface PerformanceIndicator {
   ploId: string;
   code: string;
   description: string;
+  assessment: string | null;
   displayOrder: number;
 }
 
@@ -157,7 +158,14 @@ export interface CloPloMapping {
   ploId: string;
   curriculumVersionId: string;
   levelCode: 'I' | 'P' | 'D';
-  piId: string | null;
+}
+
+export interface CloPiMapping {
+  id: string;
+  cloId: string;
+  piId: string;
+  curriculumVersionId: string;
+  levelCode: 'I' | 'P' | 'D';
   assessmentMethod: string | null;
 }
 

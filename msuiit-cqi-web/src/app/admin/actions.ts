@@ -241,6 +241,24 @@ export async function deletePlo(programId: string, ploId: string) {
   revalidatePath(`/programs/${programId}`);
 }
 
+export async function updatePlo(programId: string, ploId: string, formData: FormData) {
+  const code = str(formData, 'code');
+  const description = str(formData, 'description');
+  if (!code || !description) return;
+
+  await apiFetch(`/plos/${ploId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      code,
+      description,
+      displayOrder: optInt(formData, 'displayOrder'),
+    }),
+  });
+
+  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/programs/${programId}`);
+}
+
 export async function createPerformanceIndicator(
   programId: string,
   ploId: string,
@@ -263,7 +281,28 @@ export async function createPerformanceIndicator(
       ploId,
       code: `PI${nextNumber}`,
       description,
+      assessment: str(formData, 'assessment') || undefined,
       displayOrder: nextNumber,
+    }),
+  });
+
+  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/programs/${programId}`);
+}
+
+export async function updatePerformanceIndicator(
+  programId: string,
+  piId: string,
+  formData: FormData,
+) {
+  const description = str(formData, 'description');
+  if (!description) return;
+
+  await apiFetch(`/performance-indicators/${piId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      description,
+      assessment: str(formData, 'assessment') || null,
     }),
   });
 

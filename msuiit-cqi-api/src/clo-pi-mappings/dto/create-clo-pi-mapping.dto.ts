@@ -1,16 +1,20 @@
-import { IsEnum, IsUUID } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 import { MappingLevelCode } from '@prisma/client';
 
-export class CreateMappingDto {
+export class CreateCloPiMappingDto {
   @IsUUID()
   cloId!: string;
 
   @IsUUID()
-  ploId!: string;
+  piId!: string;
 
   @IsUUID()
   curriculumVersionId!: string;
 
   @IsEnum(MappingLevelCode)
   levelCode!: MappingLevelCode;
+
+  @IsOptional()
+  @IsString()
+  assessmentMethod?: string;
 }

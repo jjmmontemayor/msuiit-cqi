@@ -47,7 +47,10 @@ export class CoursesService {
     cohortId?: string,
     curriculumVersionId?: string,
   ) {
-    const cloWhere = await this.resolveCloWhere({ curriculumVersionId, cohortId });
+    const cloWhere = await this.resolveCloWhere({
+      curriculumVersionId,
+      cohortId,
+    });
     return this.prisma.course.findMany({
       where: programId
         ? { curriculumCourses: { some: { programId } } }
@@ -58,7 +61,10 @@ export class CoursesService {
   }
 
   async findOne(id: string, cohortId?: string, curriculumVersionId?: string) {
-    const cloWhere = await this.resolveCloWhere({ curriculumVersionId, cohortId });
+    const cloWhere = await this.resolveCloWhere({
+      curriculumVersionId,
+      cohortId,
+    });
     const course = await this.prisma.course.findUnique({
       where: { id },
       include: { clos: { where: cloWhere, orderBy: { displayOrder: 'asc' } } },

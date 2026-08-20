@@ -163,7 +163,6 @@ export function MappingTable({
                     ) : mapping ? (
                       <span
                         className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium ${LEVEL_BADGE_CLASSES[mapping.levelCode]}`}
-                        title={mapping.assessmentMethod ?? undefined}
                       >
                         {displayCodes[mapping.levelCode]}
                       </span>

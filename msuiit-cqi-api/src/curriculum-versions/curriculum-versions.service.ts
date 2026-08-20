@@ -19,7 +19,9 @@ export class CurriculumVersionsService {
   }
 
   async findOne(id: string) {
-    const version = await this.prisma.curriculumVersion.findUnique({ where: { id } });
+    const version = await this.prisma.curriculumVersion.findUnique({
+      where: { id },
+    });
     if (!version) {
       throw new NotFoundException(`Curriculum version ${id} not found`);
     }
