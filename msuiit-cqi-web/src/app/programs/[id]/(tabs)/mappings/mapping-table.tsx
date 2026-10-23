@@ -3,44 +3,13 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { MappingCell } from '../../../../admin/programs/[id]/mappings/mapping-cell';
+import { CheckIcon, PencilIcon } from '@/components/icon-buttons';
 import { CloTextCell } from './clo-text-cell';
 import { ClampableText } from '@/components/clampable-text';
 import type { LevelColorsById } from '@/lib/mapping-level-colors';
 import { buildLevelsById, type Clo, type CloPloMapping, type Course, type MappingLevel, type Plo } from '@/lib/api';
 
 type CourseWithClos = Course & { clos: Clo[] };
-
-function PencilIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 20 20"
-      fill="currentColor"
-      className="h-3.5 w-3.5"
-      aria-hidden="true"
-    >
-      <path d="M13.586 3.586a2 2 0 1 1 2.828 2.828l-.793.793-2.828-2.828.793-.793ZM11.379 5.793 3 14.172V17h2.828l8.38-8.379-2.83-2.828Z" />
-    </svg>
-  );
-}
-
-function CheckIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 20 20"
-      fill="currentColor"
-      className="h-3.5 w-3.5"
-      aria-hidden="true"
-    >
-      <path
-        fillRule="evenodd"
-        d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7.5 7.6a1 1 0 0 1-1.42.006l-3.5-3.5a1 1 0 1 1 1.414-1.414l2.796 2.796 6.79-6.882a1 1 0 0 1 1.414-.02Z"
-        clipRule="evenodd"
-      />
-    </svg>
-  );
-}
 
 export function MappingTable({
   programId,
@@ -52,6 +21,7 @@ export function MappingTable({
   ploAssessmentCourseIds,
   mappingLevels,
   levelColors,
+  editable = false,
 }: {
   programId: string;
   programCode: string;
@@ -62,6 +32,8 @@ export function MappingTable({
   ploAssessmentCourseIds: string[];
   mappingLevels: MappingLevel[];
   levelColors: LevelColorsById;
+  // Admin only: shows a pencil per course to edit its CLO text and mapping cells.
+  editable?: boolean;
 }) {
   const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
   const levelsById = buildLevelsById(mappingLevels);
@@ -90,7 +62,7 @@ export function MappingTable({
       </thead>
       <tbody>
         {courses.map((course) => {
-          const isEditing = editingCourseId === course.id;
+          const isEditing = editable && editingCourseId === course.id;
           return course.clos.map((clo, cloIdx) => (
             <tr key={clo.id} className="border-t border-neutral-200 dark:border-neutral-800">
               {cloIdx === 0 && (
@@ -119,7 +91,7 @@ export function MappingTable({
                         {course.title}
                       </div>
                     </Link>
-                    {course.clos.length > 0 && (
+                    {editable && course.clos.length > 0 && (
                       <button
                         type="button"
                         title={isEditing ? 'Done editing' : 'Edit mapping'}

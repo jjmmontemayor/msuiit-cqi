@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsInt, IsOptional, IsString, IsUUID, Max, Min, MaxLength } from 'class-validator';
 
 export class CreateCurriculumVersionDto {
   @IsUUID()
@@ -11,4 +11,10 @@ export class CreateCurriculumVersionDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1900)
+  @Max(2200)
+  effectiveYear?: number | null;
 }

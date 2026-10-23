@@ -12,14 +12,33 @@ export function AdminSidebar({ programs }: { programs: Program[] }) {
 
   const currentProgramId = pathname.match(/^\/admin\/programs\/([^/]+)/)?.[1] ?? null;
 
-  const navItems = currentProgramId
+  const base = currentProgramId ? `/admin/programs/${currentProgramId}` : null;
+  const navItems = base
     ? [
-        { href: `/admin/programs/${currentProgramId}/dashboard`, label: 'Dashboard' },
-        { href: `/admin/programs/${currentProgramId}/courses`, label: 'Courses' },
-        { href: `/admin/programs/${currentProgramId}/attainments`, label: 'Attainments' },
-        { href: `/admin/programs/${currentProgramId}`, label: 'Program Settings' },
+        { href: `${base}/dashboard`, label: 'Dashboard' },
+        { href: `${base}/courses`, label: 'Courses' },
+        { href: `${base}/settings/learning-outcomes`, label: 'Learning Outcomes' },
       ]
     : [];
+  const attainmentItems = base
+    ? [
+        { href: `${base}/attainments/clo`, label: 'CLO' },
+        { href: `${base}/attainments/plo`, label: 'PLO' },
+      ]
+    : [];
+  const mappingItems = base
+    ? [
+        { href: `${base}/mappings/clo-pi`, label: 'CLO - PI' },
+        { href: `${base}/mappings`, label: 'CLO - PLO' },
+      ]
+    : [];
+
+  const linkClass = (href: string) =>
+    `block rounded-md px-2 py-1.5 text-sm ${
+      pathname === href
+        ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900'
+        : 'text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-900'
+    }`;
 
   if (collapsed) {
     return (
@@ -74,22 +93,31 @@ export function AdminSidebar({ programs }: { programs: Program[] }) {
 
       {currentProgramId && (
         <nav className="space-y-0.5">
-          {navItems.map((item) => {
-            const active = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`block rounded-md px-2 py-1.5 text-sm ${
-                  active
-                    ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900'
-                    : 'text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-900'
-                }`}
-              >
+          {navItems.map((item) => (
+            <Link key={item.href} href={item.href} className={linkClass(item.href)}>
+              {item.label}
+            </Link>
+          ))}
+          <div className="px-2 py-1.5 text-sm text-neutral-600 dark:text-neutral-400">
+            Mappings
+          </div>
+          <div className="ml-3 space-y-0.5 border-l border-neutral-200 pl-2 dark:border-neutral-800">
+            {mappingItems.map((item) => (
+              <Link key={item.href} href={item.href} className={linkClass(item.href)}>
                 {item.label}
               </Link>
-            );
-          })}
+            ))}
+          </div>
+          <div className="px-2 py-1.5 text-sm text-neutral-600 dark:text-neutral-400">
+            Attainments
+          </div>
+          <div className="ml-3 space-y-0.5 border-l border-neutral-200 pl-2 dark:border-neutral-800">
+            {attainmentItems.map((item) => (
+              <Link key={item.href} href={item.href} className={linkClass(item.href)}>
+                {item.label}
+              </Link>
+            ))}
+          </div>
         </nav>
       )}
 

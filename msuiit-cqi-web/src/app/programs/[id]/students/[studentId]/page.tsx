@@ -43,10 +43,14 @@ async function getStudent(id: string): Promise<Student> {
 
 export default async function StudentAttainmentPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string; studentId: string }>;
+  searchParams: Promise<{ embed?: string }>;
 }) {
   const { id, studentId } = await params;
+  // Opened from the admin attainment tables: no way back to the public tabs.
+  const embedded = (await searchParams).embed === '1';
   const program = await getProgram(id);
 
   const [student, plos, cohorts, cohortAdvisers, allPloRows, cloRows] =
@@ -79,12 +83,14 @@ export default async function StudentAttainmentPage({
   return (
     <div className="space-y-8">
       <div>
-        <Link
-          href={`/programs/${program.code}/clo-attainments`}
-          className="text-sm text-neutral-500 hover:underline"
-        >
-          &larr; CLO Attainments
-        </Link>
+        {!embedded && (
+          <Link
+            href={`/programs/${program.code}/clo-attainments`}
+            className="text-sm text-neutral-500 hover:underline"
+          >
+            &larr; CLO Attainments
+          </Link>
+        )}
         <h1 className="mt-1 text-2xl font-semibold">
           {student.studentNumber} — {student.lastName}, {student.firstName}
         </h1>

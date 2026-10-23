@@ -1,8 +1,12 @@
-'use client';
+"use client";
 
-import { useState, useTransition } from 'react';
-import { deleteLearningPlanEntry, reorderLearningPlanEntries } from '../../../../../actions';
-import type { LearningPlanEntry } from '@/lib/api';
+import { useState, useTransition } from "react";
+import {
+  deleteLearningPlanEntry,
+  reorderLearningPlanEntries,
+} from "../../../../../actions";
+import type { LearningPlanEntry } from "@/lib/api";
+import { DeleteButton } from "@/components/icon-buttons";
 
 export function LearningPlanTable({
   programId,
@@ -52,7 +56,7 @@ export function LearningPlanTable({
             <th className="px-3 py-2" />
           </tr>
         </thead>
-        <tbody className={isPending ? 'opacity-50' : undefined}>
+        <tbody className={isPending ? "opacity-50" : undefined}>
           {rows.map((entry, i) => (
             <tr
               key={entry.id}
@@ -61,13 +65,15 @@ export function LearningPlanTable({
               onDragOver={(e) => e.preventDefault()}
               onDrop={() => handleDrop(i)}
               className={`border-t border-neutral-200 align-top dark:border-neutral-800 ${
-                dragIndex === i ? 'opacity-40' : ''
+                dragIndex === i ? "opacity-40" : ""
               }`}
             >
               <td className="cursor-grab px-2 py-2 text-center text-neutral-400 active:cursor-grabbing">
                 &#8942;&#8942;
               </td>
-              <td className="whitespace-nowrap px-3 py-2 font-medium">{entry.weekLabel}</td>
+              <td className="whitespace-nowrap px-3 py-2 font-medium">
+                {entry.weekLabel}
+              </td>
               <td className="px-3 py-2">{entry.topics}</td>
               <td className="px-3 py-2 text-neutral-600 dark:text-neutral-400">
                 {entry.lessonOutcome}
@@ -83,13 +89,15 @@ export function LearningPlanTable({
                 {entry.assessment}
               </td>
               <td className="px-3 py-2">
-                <form action={deleteLearningPlanEntry.bind(null, programId, courseId, entry.id)}>
-                  <button
-                    type="submit"
-                    className="text-sm text-red-600 hover:underline dark:text-red-400"
-                  >
-                    Delete
-                  </button>
+                <form
+                  action={deleteLearningPlanEntry.bind(
+                    null,
+                    programId,
+                    courseId,
+                    entry.id,
+                  )}
+                >
+                  <DeleteButton />
                 </form>
               </td>
             </tr>

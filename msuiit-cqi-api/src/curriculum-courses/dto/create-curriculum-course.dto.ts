@@ -1,5 +1,7 @@
+import { CourseCategory } from '@prisma/client';
 import {
   IsBoolean,
+  IsEnum,
   IsInt,
   IsOptional,
   IsString,
@@ -18,6 +20,10 @@ export class CreateCurriculumCourseDto {
   @IsString()
   @MaxLength(50)
   electiveGroup?: string;
+
+  @IsOptional()
+  @IsEnum(CourseCategory)
+  category?: CourseCategory | null;
 
   @IsOptional()
   @IsInt()

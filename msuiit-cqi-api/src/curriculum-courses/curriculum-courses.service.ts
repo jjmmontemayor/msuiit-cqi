@@ -21,11 +21,28 @@ export class CurriculumCoursesService {
   }
 
   async create(dto: CreateCurriculumCourseDto) {
-    const cloWhere = await this.latestCloWhere();
-    return this.prisma.curriculumCourse.create({
-      data: dto,
-      include: { course: { include: { clos: { where: cloWhere } } } },
+    const created = await this.prisma.curriculumCourse.create({ data: dto });
+
+    // A program has no curriculum version until it has courses; the first
+    // course added generates one so CLOs and mappings have something to attach to.
+    const versionCount = await this.prisma.curriculumVersion.count({
+      where: { programId: dto.programId },
     });
+    if (versionCount === 0) {
+      const program = await this.prisma.program.findUniqueOrThrow({
+        where: { id: dto.programId },
+      });
+      await this.prisma.curriculumVersion.create({
+        data: {
+          programId: dto.programId,
+          code: `${new Date().getFullYear()}-Rev1`,
+          description: `${program.code} curriculum (auto-generated)`,
+          effectiveYear: new Date().getFullYear(),
+        },
+      });
+    }
+
+    return this.findOne(created.id);
   }
 
   async findAll(programId?: string) {

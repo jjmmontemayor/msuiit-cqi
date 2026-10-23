@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { apiFetch, ApiError, type Faculty, type Program } from '@/lib/api';
 import { createFaculty, deleteFaculty } from './actions';
+import { DeleteButton } from '@/components/icon-buttons';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,12 +62,7 @@ export default async function AdminFacultyPage({
                   )}
                 </div>
                 <form action={deleteFaculty.bind(null, program.id, f.id)}>
-                  <button
-                    type="submit"
-                    className="shrink-0 text-sm text-red-600 hover:underline dark:text-red-400"
-                  >
-                    Delete
-                  </button>
+                  <DeleteButton />
                 </form>
               </li>
             ))}

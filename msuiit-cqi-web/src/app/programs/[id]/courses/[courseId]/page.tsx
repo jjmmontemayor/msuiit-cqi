@@ -1,19 +1,16 @@
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import Link from "next/link";
+import { notFound } from "next/navigation";
 import {
   apiFetch,
   ApiError,
-  type AcademicTerm,
   type Clo,
   type Course,
   type CourseOffering,
   type LearningPlanEntry,
   type Program,
-} from '@/lib/api';
-import { DownloadAttainmentTemplate } from './download-attainment-template';
-import { AttainmentUploadForm } from './attainment-upload-form';
+} from "@/lib/api";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 type CourseWithClos = Course & { clos: Clo[] };
 
@@ -48,10 +45,9 @@ export default async function CourseDetailsPage({
 }) {
   const { id, courseId } = await params;
   const { offeringId: offeringIdParam } = await searchParams;
-  const [program, course, academicTerms, offerings] = await Promise.all([
+  const [program, course, offerings] = await Promise.all([
     getProgram(id),
     getCourse(courseId),
-    apiFetch<AcademicTerm[]>('/academic-terms'),
     apiFetch<CourseOffering[]>(`/course-offerings?courseId=${courseId}`),
   ]);
 
@@ -75,22 +71,6 @@ export default async function CourseDetailsPage({
           <h1 className="text-2xl font-semibold">
             {course.code} — {course.title}
           </h1>
-          <Link
-            href={`/admin/programs/${program.id}/courses/${course.id}`}
-            title="Edit course"
-            aria-label="Edit course"
-            className="mt-1 shrink-0 rounded-md p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              className="h-4 w-4"
-              aria-hidden="true"
-            >
-              <path d="M13.586 3.586a2 2 0 1 1 2.828 2.828l-.793.793-2.828-2.828.793-.793ZM11.379 5.793 3 14.172V17h2.828l8.38-8.379-2.83-2.828Z" />
-            </svg>
-          </Link>
         </div>
         {course.description && (
           <p className="mt-1 text-neutral-600 dark:text-neutral-400">
@@ -104,19 +84,19 @@ export default async function CourseDetailsPage({
         <dl className="mt-3 grid grid-cols-2 gap-4 rounded-md border border-neutral-200 p-4 text-sm sm:grid-cols-4 dark:border-neutral-800">
           <div>
             <dt className="text-neutral-500">Credits</dt>
-            <dd className="mt-0.5">{course.credits ?? '—'}</dd>
+            <dd className="mt-0.5">{course.credits ?? "—"}</dd>
           </div>
           <div>
             <dt className="text-neutral-500">Lecture hours / week</dt>
-            <dd className="mt-0.5">{course.lectureHours ?? '—'}</dd>
+            <dd className="mt-0.5">{course.lectureHours ?? "—"}</dd>
           </div>
           <div>
             <dt className="text-neutral-500">Lab hours / week</dt>
-            <dd className="mt-0.5">{course.labHours ?? '—'}</dd>
+            <dd className="mt-0.5">{course.labHours ?? "—"}</dd>
           </div>
           <div>
             <dt className="text-neutral-500">Prerequisites</dt>
-            <dd className="mt-0.5">{course.prerequisites ?? '—'}</dd>
+            <dd className="mt-0.5">{course.prerequisites ?? "—"}</dd>
           </div>
         </dl>
       </section>
@@ -154,8 +134,8 @@ export default async function CourseDetailsPage({
                   {offerings.map((o) => (
                     <option key={o.id} value={o.id}>
                       {o.academicTerm.label}
-                      {o.section ? ` — ${o.section}` : ''}
-                      {o.instructorName ? ` (${o.instructorName})` : ''}
+                      {o.section ? ` — ${o.section}` : ""}
+                      {o.instructorName ? ` (${o.instructorName})` : ""}
                     </option>
                   ))}
                 </select>
@@ -194,8 +174,13 @@ export default async function CourseDetailsPage({
               </thead>
               <tbody>
                 {learningPlanEntries.map((entry) => (
-                  <tr key={entry.id} className="border-t border-neutral-200 align-top dark:border-neutral-800">
-                    <td className="whitespace-nowrap px-3 py-2 font-medium">{entry.weekLabel}</td>
+                  <tr
+                    key={entry.id}
+                    className="border-t border-neutral-200 align-top dark:border-neutral-800"
+                  >
+                    <td className="whitespace-nowrap px-3 py-2 font-medium">
+                      {entry.weekLabel}
+                    </td>
                     <td className="px-3 py-2">{entry.topics}</td>
                     <td className="px-3 py-2 text-neutral-600 dark:text-neutral-400">
                       {entry.lessonOutcome}
@@ -218,24 +203,6 @@ export default async function CourseDetailsPage({
         )}
       </section>
 
-      <section>
-        {course.clos.length > 0 && (
-          <div className="mb-3 rounded-md border border-neutral-200 p-4 dark:border-neutral-800">
-            <h3 className="text-sm font-medium">1. Download a blank attainment sheet</h3>
-            <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-              Fill this in with student scores, then upload the same file below.
-            </p>
-            <div className="mt-2">
-              <DownloadAttainmentTemplate courseCode={course.code} clos={course.clos} />
-            </div>
-          </div>
-        )}
-        <AttainmentUploadForm
-          programId={program.id}
-          courseId={course.id}
-          academicTerms={academicTerms}
-        />
-      </section>
     </div>
   );
 }

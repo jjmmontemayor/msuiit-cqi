@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { apiFetch, ApiError, type Plo, type Program } from '@/lib/api';
+import { ProgramSettingsSections } from '../program-settings-sections';
+import { iconLinkClass, PencilIcon } from '@/components/icon-buttons';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,10 +19,13 @@ async function getProgram(id: string): Promise<Program> {
 
 export default async function ProgramDashboardPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ mappingLevelError?: string }>;
 }) {
   const { id } = await params;
+  const { mappingLevelError } = await searchParams;
   const program = await getProgram(id);
   const plos = await apiFetch<Plo[]>(`/plos?programId=${program.id}`);
   const totalPis = plos.reduce((sum, p) => sum + (p.performanceIndicators?.length ?? 0), 0);
@@ -53,10 +58,12 @@ export default async function ProgramDashboardPage({
             Program Learning Outcomes &amp; Performance Indicators
           </h2>
           <Link
-            href={`/admin/programs/${program.id}`}
-            className="text-sm text-neutral-500 hover:underline"
+            href={`/admin/programs/${program.id}/settings/learning-outcomes`}
+            title="Edit in Learning Outcomes"
+            aria-label="Edit in Learning Outcomes"
+            className={iconLinkClass}
           >
-            Edit in Program Settings &rarr;
+            <PencilIcon />
           </Link>
         </div>
         {plos.length === 0 ? (
@@ -87,6 +94,11 @@ export default async function ProgramDashboardPage({
             })}
           </ul>
         )}
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-medium">Program Settings</h2>
+        <ProgramSettingsSections program={program} mappingLevelError={mappingLevelError} />
       </section>
     </div>
   );

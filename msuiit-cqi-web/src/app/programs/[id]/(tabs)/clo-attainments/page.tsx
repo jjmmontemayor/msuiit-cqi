@@ -37,10 +37,11 @@ export default async function CloAttainmentsPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ cohortId?: string }>;
+  searchParams: Promise<{ cohortId?: string; admin?: string }>;
 }) {
   const { id } = await params;
-  const { cohortId: cohortIdParam } = await searchParams;
+  const { cohortId: cohortIdParam, admin } = await searchParams;
+  const isAdmin = admin === '1';
   const program = await getProgram(id);
   const selectedCohortId = cohortIdParam ?? '';
   const cohortQuery = selectedCohortId ? `&cohortId=${selectedCohortId}` : '';
@@ -186,7 +187,8 @@ export default async function CloAttainmentsPage({
                   >
                     <td className={`${studentCols} ${rowBg} px-3 py-1.5`}>
                       <Link
-                        href={`/programs/${program.code}/students/${student.id}`}
+                        href={`/programs/${program.code}/students/${student.id}${isAdmin ? '?embed=1' : ''}`}
+                        {...(isAdmin ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                         className="hover:underline"
                       >
                         <div className="font-medium">{student.studentNumber}</div>

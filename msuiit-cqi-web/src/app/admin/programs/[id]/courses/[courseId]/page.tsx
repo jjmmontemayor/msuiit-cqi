@@ -1,24 +1,28 @@
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import Link from "next/link";
+import { notFound } from "next/navigation";
 import {
   apiFetch,
   ApiError,
+  type AcademicTerm,
   type Clo,
   type Course,
   type CurriculumCourse,
   type CurriculumVersion,
   type Program,
-} from '@/lib/api';
+} from "@/lib/api";
 import {
   createClo,
   deleteClo,
   duplicateCloToVersion,
   setCloLock,
   updateCourseDetails,
-} from '../../../../actions';
-import { CourseAdminTabs } from './course-admin-tabs';
+} from "../../../../actions";
+import { CourseAdminTabs } from "./course-admin-tabs";
+import { DeleteButton } from "@/components/icon-buttons";
+import { DownloadAttainmentTemplate } from "@/app/programs/[id]/courses/[courseId]/download-attainment-template";
+import { AttainmentUploadForm } from "@/app/programs/[id]/courses/[courseId]/attainment-upload-form";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 async function getProgram(id: string): Promise<Program> {
   try {
@@ -51,11 +55,18 @@ export default async function AdminCourseClosPage({
 }) {
   const { id, courseId } = await params;
   const { curriculumVersionId: versionIdParam } = await searchParams;
-  const [program, course, curriculumCourses, curriculumVersions] = await Promise.all([
+  const [
+    program,
+    course,
+    curriculumCourses,
+    curriculumVersions,
+    academicTerms,
+  ] = await Promise.all([
     getProgram(id),
     getCourse(courseId),
     apiFetch<CurriculumCourse[]>(`/curriculum-courses?programId=${id}`),
     apiFetch<CurriculumVersion[]>(`/curriculum-versions?programId=${id}`),
+    apiFetch<AcademicTerm[]>("/academic-terms"),
   ]);
 
   const otherCourses = curriculumCourses
@@ -63,26 +74,33 @@ export default async function AdminCourseClosPage({
     .filter((c) => c.id !== course.id)
     .sort((a, b) => a.code.localeCompare(b.code));
 
-  const boundUpdateCourseDetails = updateCourseDetails.bind(null, program.id, course.id);
+  const boundUpdateCourseDetails = updateCourseDetails.bind(
+    null,
+    program.id,
+    course.id,
+  );
 
   const selectedVersionId = versionIdParam || curriculumVersions[0]?.id;
   const clos = selectedVersionId
-    ? await apiFetch<Clo[]>(`/clos?courseId=${course.id}&curriculumVersionId=${selectedVersionId}`)
+    ? await apiFetch<Clo[]>(
+        `/clos?courseId=${course.id}&curriculumVersionId=${selectedVersionId}`,
+      )
     : [];
-  const otherVersions = curriculumVersions.filter((v) => v.id !== selectedVersionId);
+  const otherVersions = curriculumVersions.filter(
+    (v) => v.id !== selectedVersionId,
+  );
 
-  const boundCreateClo = createClo.bind(null, program.id, course.id, selectedVersionId ?? '');
+  const boundCreateClo = createClo.bind(
+    null,
+    program.id,
+    course.id,
+    selectedVersionId ?? "",
+  );
 
   return (
     <div className="space-y-8">
       <div>
-        <Link
-          href={`/programs/${program.code}/courses/${course.id}`}
-          className="text-sm text-neutral-500 hover:underline"
-        >
-          &larr; View {course.code}
-        </Link>
-        <h1 className="mt-1 text-2xl font-semibold">
+        <h1 className="text-2xl font-semibold">
           {course.code} — {course.title}
         </h1>
       </div>
@@ -120,7 +138,7 @@ export default async function AdminCourseClosPage({
             <textarea
               name="description"
               rows={3}
-              defaultValue={course.description ?? ''}
+              defaultValue={course.description ?? ""}
               className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
             />
           </label>
@@ -130,7 +148,7 @@ export default async function AdminCourseClosPage({
               name="credits"
               type="number"
               min={0}
-              defaultValue={course.credits ?? ''}
+              defaultValue={course.credits ?? ""}
               className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
             />
           </label>
@@ -140,7 +158,7 @@ export default async function AdminCourseClosPage({
               name="lectureHours"
               type="number"
               min={0}
-              defaultValue={course.lectureHours ?? ''}
+              defaultValue={course.lectureHours ?? ""}
               className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
             />
           </label>
@@ -150,7 +168,7 @@ export default async function AdminCourseClosPage({
               name="labHours"
               type="number"
               min={0}
-              defaultValue={course.labHours ?? ''}
+              defaultValue={course.labHours ?? ""}
               className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
             />
           </label>
@@ -158,7 +176,7 @@ export default async function AdminCourseClosPage({
             Prerequisites
             <select
               name="prerequisites"
-              defaultValue={course.prerequisites ?? ''}
+              defaultValue={course.prerequisites ?? ""}
               className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
             >
               <option value="">None</option>
@@ -211,19 +229,24 @@ export default async function AdminCourseClosPage({
 
         {curriculumVersions.length === 0 ? (
           <p className="mt-2 text-sm text-neutral-500">
-            No curriculum versions set up for this program yet — CLOs are
-            scoped per version, so{' '}
+            No curriculum versions set up for this program yet — CLOs are scoped
+            per version, so{" "}
             <Link href={`/admin/programs/${program.id}`} className="underline">
               add one above
             </Link>
             .
           </p>
         ) : clos.length === 0 ? (
-          <p className="mt-2 text-sm text-neutral-500">No CLOs yet for this curriculum version.</p>
+          <p className="mt-2 text-sm text-neutral-500">
+            No CLOs yet for this curriculum version.
+          </p>
         ) : (
           <ul className="mt-3 divide-y divide-neutral-200 rounded-md border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
             {clos.map((clo) => (
-              <li key={clo.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
+              <li
+                key={clo.id}
+                className="flex items-center justify-between gap-3 px-4 py-2.5"
+              >
                 <div className="text-sm">
                   <span className="font-medium">{clo.code}</span>
                   {clo.isLocked && (
@@ -238,7 +261,12 @@ export default async function AdminCourseClosPage({
                 <div className="flex shrink-0 items-center gap-3">
                   {otherVersions.length > 0 && (
                     <form
-                      action={duplicateCloToVersion.bind(null, program.id, course.id, clo.id)}
+                      action={duplicateCloToVersion.bind(
+                        null,
+                        program.id,
+                        course.id,
+                        clo.id,
+                      )}
                       className="flex items-center gap-1"
                     >
                       <select
@@ -263,22 +291,32 @@ export default async function AdminCourseClosPage({
                       </button>
                     </form>
                   )}
-                  <form action={setCloLock.bind(null, program.id, course.id, clo.id, !clo.isLocked)}>
+                  <form
+                    action={setCloLock.bind(
+                      null,
+                      program.id,
+                      course.id,
+                      clo.id,
+                      !clo.isLocked,
+                    )}
+                  >
                     <button
                       type="submit"
                       className="text-sm text-neutral-600 hover:underline dark:text-neutral-400"
                     >
-                      {clo.isLocked ? 'Unlock' : 'Lock'}
+                      {clo.isLocked ? "Unlock" : "Lock"}
                     </button>
                   </form>
                   {!clo.isLocked && (
-                    <form action={deleteClo.bind(null, program.id, course.id, clo.id)}>
-                      <button
-                        type="submit"
-                        className="text-sm text-red-600 hover:underline dark:text-red-400"
-                      >
-                        Delete
-                      </button>
+                    <form
+                      action={deleteClo.bind(
+                        null,
+                        program.id,
+                        course.id,
+                        clo.id,
+                      )}
+                    >
+                      <DeleteButton />
                     </form>
                   )}
                 </div>
@@ -293,7 +331,8 @@ export default async function AdminCourseClosPage({
             className="mt-3 grid gap-3 rounded-md border border-neutral-200 p-4 sm:grid-cols-4 dark:border-neutral-800"
           >
             <p className="text-xs text-neutral-500 sm:col-span-4">
-              Code is assigned automatically (CLO{clos.length + 1}) for the selected curriculum version.
+              Code is assigned automatically (CLO{clos.length + 1}) for the
+              selected curriculum version.
             </p>
             <label className="text-sm sm:col-span-3">
               Description
@@ -322,6 +361,33 @@ export default async function AdminCourseClosPage({
             </div>
           </form>
         )}
+      </section>
+
+      <section>
+        <h2 className="text-lg font-medium">Attainment Sheet</h2>
+        {clos.length > 0 && (
+          <div className="mt-3 rounded-md border border-neutral-200 p-4 dark:border-neutral-800">
+            <h3 className="text-sm font-medium">
+              1. Download a blank attainment sheet
+            </h3>
+            <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+              Fill this in with student scores, then upload the same file below.
+            </p>
+            <div className="mt-2">
+              <DownloadAttainmentTemplate
+                courseCode={course.code}
+                clos={clos}
+              />
+            </div>
+          </div>
+        )}
+        <div className="mt-3">
+          <AttainmentUploadForm
+            programId={program.id}
+            courseId={course.id}
+            academicTerms={academicTerms}
+          />
+        </div>
       </section>
     </div>
   );

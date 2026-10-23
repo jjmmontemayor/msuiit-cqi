@@ -369,7 +369,9 @@ async function main() {
       if (!plo) continue;
       const mappingLevel = mappingLevelByCode.get(level);
       if (!mappingLevel) {
-        console.warn(`Skipping unrecognized mapping level "${level}" for ${row.courseCode} ${row.cloCode} -> ${ploCode}`);
+        console.warn(
+          `Skipping unrecognized mapping level "${level}" for ${row.courseCode} ${row.cloCode} -> ${ploCode}`,
+        );
         continue;
       }
 

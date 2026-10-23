@@ -30,7 +30,7 @@ export default async function ProgramLayout({
     <div className="space-y-6">
       <div>
         <Link href="/" className="text-sm text-neutral-500 hover:underline">
-          &larr; Dashboard
+          &larr; All Programs
         </Link>
         <h1 className="mt-1 text-2xl font-semibold">
           {program.code} — {program.name}

@@ -9,6 +9,7 @@ import {
   updateCohort,
 } from '../../actions';
 import type { Cohort, CohortAdviser, CurriculumVersion, Faculty } from '@/lib/api';
+import { CancelButton, DeleteButton, EditButton } from '@/components/icon-buttons';
 
 export function BatchRow({
   programId,
@@ -79,13 +80,7 @@ export function BatchRow({
             >
               Save
             </button>
-            <button
-              type="button"
-              onClick={() => setIsEditing(false)}
-              className="text-xs text-neutral-500 hover:underline"
-            >
-              Cancel
-            </button>
+            <CancelButton onClick={() => setIsEditing(false)} />
           </div>
         </form>
       ) : (
@@ -102,20 +97,9 @@ export function BatchRow({
             )}
           </div>
           <div className="flex shrink-0 items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setIsEditing(true)}
-              className="text-sm text-neutral-500 hover:underline"
-            >
-              Edit
-            </button>
+            <EditButton onClick={() => setIsEditing(true)} />
             <form action={deleteCohort.bind(null, programId, cohort.id)}>
-              <button
-                type="submit"
-                className="text-sm text-red-600 hover:underline dark:text-red-400"
-              >
-                Delete
-              </button>
+              <DeleteButton />
             </form>
           </div>
         </div>

@@ -7,8 +7,9 @@ import {
   deletePlo,
   updatePerformanceIndicator,
   updatePlo,
-} from '../../actions';
+} from '../../../../actions';
 import type { Plo } from '@/lib/api';
+import { DeleteButton, EditButton } from '@/components/icon-buttons';
 
 export function PloRow({
   programId,
@@ -45,23 +46,15 @@ export function PloRow({
             </span>
           </span>
         </button>
-        <button
-          type="button"
+        <EditButton
+          title={isEditingPlo ? 'Cancel editing' : 'Edit'}
           onClick={() => {
             setIsEditingPlo(!isEditingPlo);
             if (!isExpanded) setIsExpanded(true);
           }}
-          className="shrink-0 text-sm text-neutral-600 hover:underline dark:text-neutral-400"
-        >
-          {isEditingPlo ? 'Cancel' : 'Edit'}
-        </button>
+        />
         <form action={deletePlo.bind(null, programId, plo.id)}>
-          <button
-            type="submit"
-            className="shrink-0 text-sm text-red-600 hover:underline dark:text-red-400"
-          >
-            Delete
-          </button>
+          <DeleteButton />
         </form>
       </div>
 
@@ -230,20 +223,9 @@ function PiRow({
         )}
       </div>
       <div className="flex shrink-0 items-center gap-3">
-        <button
-          type="button"
-          onClick={() => setIsEditing(true)}
-          className="text-xs text-neutral-600 hover:underline dark:text-neutral-400"
-        >
-          Edit
-        </button>
+        <EditButton onClick={() => setIsEditing(true)} />
         <form action={deletePerformanceIndicator.bind(null, programId, piId)}>
-          <button
-            type="submit"
-            className="text-xs text-red-600 hover:underline dark:text-red-400"
-          >
-            Delete
-          </button>
+          <DeleteButton />
         </form>
       </div>
     </li>

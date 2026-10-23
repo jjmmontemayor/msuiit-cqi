@@ -18,11 +18,11 @@ export async function createFaculty(programId: string, formData: FormData) {
   });
 
   revalidatePath(`/admin/programs/${programId}/faculty`);
-  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
 }
 
 export async function deleteFaculty(programId: string, facultyId: string) {
   await apiFetch(`/faculty/${facultyId}`, { method: 'DELETE' });
   revalidatePath(`/admin/programs/${programId}/faculty`);
-  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
 }

@@ -1,6 +1,6 @@
-import Link from 'next/link';
 import { apiFetch, type AcademicTerm } from '@/lib/api';
 import { createAcademicTerm, deleteAcademicTerm } from './actions';
+import { DeleteButton } from '@/components/icon-buttons';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,10 +13,7 @@ export default async function AdminAcademicTermsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <Link href="/admin" className="text-sm text-neutral-500 hover:underline">
-          &larr; Admin
-        </Link>
-        <h1 className="mt-1 text-2xl font-semibold">Academic Terms</h1>
+        <h1 className="text-2xl font-semibold">Academic Terms</h1>
         <p className="mt-1 text-neutral-600 dark:text-neutral-400">
           Institution-wide calendar terms. Faculty uploading a CLO
           attainment sheet pick an academic year and semester from what&apos;s
@@ -38,12 +35,7 @@ export default async function AdminAcademicTermsPage() {
                   <span className="ml-2 text-neutral-600 dark:text-neutral-400">{t.label}</span>
                 </div>
                 <form action={deleteAcademicTerm.bind(null, t.id)}>
-                  <button
-                    type="submit"
-                    className="shrink-0 text-sm text-red-600 hover:underline dark:text-red-400"
-                  >
-                    Delete
-                  </button>
+                  <DeleteButton />
                 </form>
               </li>
             ))}
@@ -52,10 +44,10 @@ export default async function AdminAcademicTermsPage() {
 
         <form
           action={createAcademicTerm}
-          className="mt-3 grid gap-3 rounded-md border border-neutral-200 p-4 sm:grid-cols-4 dark:border-neutral-800"
+          className="mt-3 grid gap-3 rounded-md border border-neutral-200 p-4 sm:grid-cols-3 dark:border-neutral-800"
         >
           <label className="text-sm">
-            School year start
+            Academic year start
             <input
               name="schoolYearStart"
               type="number"
@@ -65,7 +57,7 @@ export default async function AdminAcademicTermsPage() {
             />
           </label>
           <label className="text-sm">
-            School year end
+            Academic year end
             <input
               name="schoolYearEnd"
               type="number"
@@ -90,17 +82,10 @@ export default async function AdminAcademicTermsPage() {
               <option value="SUMMER">Summer</option>
             </select>
           </label>
-          <label className="text-sm">
-            Label
-            <input
-              name="label"
-              required
-              maxLength={50}
-              placeholder="AY2025-2026 1st Sem"
-              className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-            />
-          </label>
-          <div className="sm:col-span-4">
+          <div className="sm:col-span-3">
+            <p className="mb-2 text-xs text-neutral-500">
+              The label (e.g. AY2025-2026 1st Sem) is generated automatically.
+            </p>
             <button
               type="submit"
               className="rounded-md bg-neutral-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"

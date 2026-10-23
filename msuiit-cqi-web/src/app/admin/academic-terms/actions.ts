@@ -11,12 +11,11 @@ export async function createAcademicTerm(formData: FormData) {
   const schoolYearStart = Number(str(formData, 'schoolYearStart'));
   const schoolYearEnd = Number(str(formData, 'schoolYearEnd'));
   const semester = str(formData, 'semester');
-  const label = str(formData, 'label');
-  if (!schoolYearStart || !schoolYearEnd || !semester || !label) return;
+  if (!schoolYearStart || !schoolYearEnd || !semester) return;
 
   await apiFetch('/academic-terms', {
     method: 'POST',
-    body: JSON.stringify({ schoolYearStart, schoolYearEnd, semester, label }),
+    body: JSON.stringify({ schoolYearStart, schoolYearEnd, semester }),
   });
 
   revalidatePath('/admin/academic-terms');

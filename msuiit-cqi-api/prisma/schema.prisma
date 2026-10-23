@@ -14,23 +14,41 @@ datasource db {
 // Catalog (institution-wide, program-independent)
 // ---------------------------------------------------------------------------
 
-model Program {
-  id          String   @id @default(uuid())
-  code        String   @unique
-  name        String
-  description String?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+model College {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  curriculumCourses    CurriculumCourse[]
-  plos                 Plo[]
-  cohorts              Cohort[]
-  curriculumVersions   CurriculumVersion[]
-  students             Student[]
-  userRoles            UserProgramRole[]
-  mappingLevels        MappingLevel[]
-  attainmentBenchmark  AttainmentBenchmark?
-  faculty              Faculty[]
+  programs Program[]
+
+  @@map("colleges")
+}
+
+model Program {
+  id                 String   @id @default(uuid())
+  code               String   @unique
+  name               String
+  description        String?
+  collegeId          String?  @map("college_id")
+  // Year the program was first offered, and how often its curriculum is
+  // expected to be revised (drives the "revising soon" dashboard stats).
+  yearEstablished    Int?     @map("year_established")
+  revisionCycleYears Int      @default(5) @map("revision_cycle_years")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  college             College?             @relation(fields: [collegeId], references: [id], onDelete: SetNull)
+  curriculumCourses   CurriculumCourse[]
+  plos                Plo[]
+  cohorts             Cohort[]
+  curriculumVersions  CurriculumVersion[]
+  students            Student[]
+  userRoles           UserProgramRole[]
+  mappingLevels       MappingLevel[]
+  attainmentBenchmark AttainmentBenchmark?
+  faculty             Faculty[]
 
   @@map("programs")
 }
@@ -121,20 +139,31 @@ model AcademicTerm {
 // Program structure
 // ---------------------------------------------------------------------------
 
+// How a course counts toward a program's unit totals. A course with an
+// elective group but no explicit category is treated as ELECTIVE by the app.
+enum CourseCategory {
+  MAJOR
+  MINOR
+  ELECTIVE
+
+  @@map("course_category")
+}
+
 model CurriculumCourse {
-  id                     String  @id @default(uuid())
-  programId              String  @map("program_id")
-  courseId               String  @map("course_id")
-  electiveGroup          String? @map("elective_group")
-  yearLevel              Int?    @map("year_level")
-  term                   String?
-  displayOrder           Int     @default(0) @map("display_order")
-  isActive               Boolean @default(true) @map("is_active")
+  id                    String          @id @default(uuid())
+  programId             String          @map("program_id")
+  courseId              String          @map("course_id")
+  electiveGroup         String?         @map("elective_group")
+  category              CourseCategory?
+  yearLevel             Int?            @map("year_level")
+  term                  String?
+  displayOrder          Int             @default(0) @map("display_order")
+  isActive              Boolean         @default(true) @map("is_active")
   // Designates this course (within this program's curriculum) as one whose
   // CLO-PLO mappings are the ones formally used for PLO assessment/reporting,
   // as opposed to every course that happens to have a mapping. Lets the
   // CLO-PLO mapping tab highlight and filter down to just these courses.
-  isPloAssessmentTarget  Boolean @default(false) @map("is_plo_assessment_target")
+  isPloAssessmentTarget Boolean         @default(false) @map("is_plo_assessment_target")
 
   program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
   course  Course  @relation(fields: [courseId], references: [id], onDelete: Restrict)
@@ -159,17 +188,17 @@ model Plo {
 }
 
 model PerformanceIndicator {
-  id          String @id @default(uuid())
-  ploId       String @map("plo_id")
-  code        String
-  description String
+  id           String  @id @default(uuid())
+  ploId        String  @map("plo_id")
+  code         String
+  description  String
   // The assessment instrument used to measure this PI in general (e.g. "Board
   // exam item analysis"), distinct from CloPiMapping.assessmentMethod which
   // records how one specific CLO's evidence toward this PI is assessed.
   assessment   String? @map("assessment")
   displayOrder Int     @default(0) @map("display_order")
 
-  plo           Plo             @relation(fields: [ploId], references: [id], onDelete: Cascade)
+  plo           Plo            @relation(fields: [ploId], references: [id], onDelete: Cascade)
   cloPiMappings CloPiMapping[]
   evaluations   PiEvaluation[]
 
@@ -185,12 +214,14 @@ model PerformanceIndicator {
 // version, so a new cohort doesn't need its CLOs/mappings duplicated unless
 // the curriculum actually changed (see Clo/CloPloMapping below).
 model CurriculumVersion {
-  id          String   @id @default(uuid())
-  programId   String   @map("program_id")
-  code        String
-  description String?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id            String   @id @default(uuid())
+  programId     String   @map("program_id")
+  code          String
+  description   String?
+  // Year this curriculum revision took effect.
+  effectiveYear Int?     @map("effective_year")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   program        Program         @relation(fields: [programId], references: [id], onDelete: Cascade)
   cohorts        Cohort[]
@@ -223,6 +254,8 @@ model Clo {
   ploMappings       CloPloMapping[]
   piMappings        CloPiMapping[]
   attainments       CloAttainment[]
+  offeringClos      OfferingClo[]
+  assessmentTasks   AssessmentTask[]
 
   @@unique([courseId, code, curriculumVersionId])
   @@map("clos")
@@ -375,11 +408,23 @@ model CourseOffering {
   academicTermId String  @map("academic_term_id")
   section        String?
   instructorName String? @map("instructor_name")
+  // Syllabus details (see the syllabus export).
+  modality           String?
+  population         Int?
+  references         String?
+  classroomPolicies  String? @map("classroom_policies")
+  preparedBy         String? @map("prepared_by")
+  reviewedBy         String? @map("reviewed_by")
+  approvedBy         String? @map("approved_by")
+  // Share of the overall score from coursework; the rest is the final assessment.
+  courseworkWeight   Int     @default(30) @map("coursework_weight")
 
-  course            Course              @relation(fields: [courseId], references: [id], onDelete: Restrict)
-  academicTerm      AcademicTerm        @relation(fields: [academicTermId], references: [id], onDelete: Restrict)
-  enrollments       Enrollment[]
+  course              Course              @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  academicTerm        AcademicTerm        @relation(fields: [academicTermId], references: [id], onDelete: Restrict)
+  enrollments         Enrollment[]
   learningPlanEntries LearningPlanEntry[]
+  offeringClos         OfferingClo[]
+  assessmentTasks      AssessmentTask[]
 
   @@unique([courseId, academicTermId, section])
   @@map("course_offerings")
@@ -517,4 +562,39 @@ model UserProgramRole {
 
   @@unique([userId, programId])
   @@map("user_program_roles")
+}
+
+// How a CLO is weighed and evidenced in one offering's syllabus. `weight` is the
+// CLO's share (percent) of the overall course score.
+model OfferingClo {
+  id                String  @id @default(uuid())
+  courseOfferingId  String  @map("course_offering_id")
+  cloId             String  @map("clo_id")
+  weight            Int     @default(0)
+  taxonomy          String?
+  evidenceReference String? @map("evidence_reference")
+
+  courseOffering CourseOffering @relation(fields: [courseOfferingId], references: [id], onDelete: Cascade)
+  clo            Clo            @relation(fields: [cloId], references: [id], onDelete: Cascade)
+
+  @@unique([courseOfferingId, cloId])
+  @@map("offering_clos")
+}
+
+// An assessment selected to compute a CLO in one offering. `weight` is the
+// task's percent within its CLO (a CLO's tasks should total 100); the grading
+// sheet divides a student's score by `maxScore`.
+model AssessmentTask {
+  id               String @id @default(uuid())
+  courseOfferingId String @map("course_offering_id")
+  cloId            String @map("clo_id")
+  name             String
+  weight           Int    @default(0)
+  maxScore         Int    @default(100) @map("max_score")
+  displayOrder     Int    @default(0) @map("display_order")
+
+  courseOffering CourseOffering @relation(fields: [courseOfferingId], references: [id], onDelete: Cascade)
+  clo            Clo            @relation(fields: [cloId], references: [id], onDelete: Cascade)
+
+  @@map("assessment_tasks")
 }

@@ -5,9 +5,11 @@ import { buildPloSummary } from '@/lib/mapping-summary';
 import { buildLevelColors } from '@/lib/mapping-level-colors';
 import { MappingSummaryTable } from '@/components/mapping-summary-table';
 import { WeightComputationTable } from '@/components/weight-computation-table';
+import { AutoSubmitSelect } from '@/components/auto-submit-select';
 import { AutoSubmitCheckbox } from '@/components/auto-submit-checkbox';
 import { ExpandAllCheckbox } from '@/components/expand-all-checkbox';
 import { MappingTable } from './mapping-table';
+import { iconLinkClass, PencilIcon } from '@/components/icon-buttons';
 
 export const dynamic = 'force-dynamic';
 
@@ -93,7 +95,7 @@ export default async function MappingsPage({
         <form method="get" className="flex items-end gap-2">
           <label className="text-sm">
             Curriculum Version
-            <select
+            <AutoSubmitSelect
               name="curriculumVersionId"
               defaultValue={selectedVersionId}
               className="mt-1 block w-48 rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
@@ -103,7 +105,7 @@ export default async function MappingsPage({
                   {v.code}
                 </option>
               ))}
-            </select>
+            </AutoSubmitSelect>
           </label>
           <AutoSubmitCheckbox
             name="onlyPloAssessment"
@@ -111,12 +113,6 @@ export default async function MappingsPage({
             defaultChecked={showOnlyPloAssessment}
             label="Only PLO assessment courses"
           />
-          <button
-            type="submit"
-            className="rounded-md border border-neutral-200 px-3 py-1.5 text-sm hover:border-neutral-400 dark:border-neutral-800 dark:hover:border-neutral-600"
-          >
-            View
-          </button>
         </form>
       </div>
 
@@ -166,20 +162,12 @@ export default async function MappingsPage({
             <h2 className="text-lg font-medium">CLO-PLO Weight Computation</h2>
             <Link
               href={`/admin/programs/${program.id}`}
-              title="Edit weights"
-              aria-label="Edit weights"
-              className="rounded-md p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                className="h-4 w-4"
-                aria-hidden="true"
-              >
-                <path d="M13.586 3.586a2 2 0 1 1 2.828 2.828l-.793.793-2.828-2.828.793-.793ZM11.379 5.793 3 14.172V17h2.828l8.38-8.379-2.83-2.828Z" />
-              </svg>
-            </Link>
+ title="Edit weights"
+ aria-label="Edit weights"
+ className={iconLinkClass}
+ >
+ <PencilIcon />
+ </Link>
           </div>
           <p className="mt-1 text-sm text-neutral-500">
             Each mapping level contributes its configured weight (

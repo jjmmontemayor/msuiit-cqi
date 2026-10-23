@@ -41,6 +41,15 @@ export interface Program {
   code: string;
   name: string;
   description: string | null;
+  collegeId: string | null;
+  yearEstablished: number | null;
+  revisionCycleYears: number;
+}
+
+export interface College {
+  id: string;
+  code: string;
+  name: string;
 }
 
 export interface Course {
@@ -54,11 +63,14 @@ export interface Course {
   prerequisites: string | null;
 }
 
+export type CourseCategory = 'MAJOR' | 'MINOR' | 'ELECTIVE';
+
 export interface CurriculumCourse {
   id: string;
   programId: string;
   courseId: string;
   electiveGroup: string | null;
+  category: CourseCategory | null;
   yearLevel: number | null;
   term: string | null;
   displayOrder: number;
@@ -82,6 +94,7 @@ export interface CurriculumVersion {
   programId: string;
   code: string;
   description: string | null;
+  effectiveYear: number | null;
 }
 
 export interface Plo {
@@ -251,7 +264,37 @@ export interface CourseOffering {
   academicTermId: string;
   section: string | null;
   instructorName: string | null;
+  modality: string | null;
+  population: number | null;
+  references: string | null;
+  classroomPolicies: string | null;
+  preparedBy: string | null;
+  reviewedBy: string | null;
+  approvedBy: string | null;
+  courseworkWeight: number;
   academicTerm: AcademicTerm;
+}
+
+export interface OfferingClo {
+  id: string;
+  cloId: string;
+  weight: number;
+  taxonomy: string | null;
+  evidenceReference: string | null;
+}
+
+export interface AssessmentTask {
+  id: string;
+  courseOfferingId: string;
+  cloId: string;
+  name: string;
+  weight: number;
+  maxScore: number;
+}
+
+export interface OfferingBlueprint {
+  clos: { clo: Clo; setting: OfferingClo | null }[];
+  tasks: AssessmentTask[];
 }
 
 export interface LearningPlanEntry {

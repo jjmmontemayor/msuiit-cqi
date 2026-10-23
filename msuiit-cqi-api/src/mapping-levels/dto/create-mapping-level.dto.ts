@@ -1,4 +1,11 @@
-import { IsInt, IsOptional, IsString, IsUUID, Min, MaxLength } from 'class-validator';
+import {
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+  MaxLength,
+} from 'class-validator';
 
 export class CreateMappingLevelDto {
   @IsUUID()

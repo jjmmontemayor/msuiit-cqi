@@ -18,7 +18,10 @@ export class MappingLevelsService {
         data: { ...dto, displayCode: dto.displayCode || dto.code },
       });
     } catch (err) {
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
         throw new ConflictException(
           `This program already has a mapping level with code "${dto.code}".`,
         );
@@ -35,14 +38,22 @@ export class MappingLevelsService {
   }
 
   async update(id: string, dto: UpdateMappingLevelDto) {
-    const existing = await this.prisma.mappingLevel.findUnique({ where: { id } });
+    const existing = await this.prisma.mappingLevel.findUnique({
+      where: { id },
+    });
     if (!existing) {
       throw new NotFoundException(`Mapping level ${id} not found`);
     }
     try {
-      return await this.prisma.mappingLevel.update({ where: { id }, data: dto });
+      return await this.prisma.mappingLevel.update({
+        where: { id },
+        data: dto,
+      });
     } catch (err) {
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
         throw new ConflictException(
           `This program already has a mapping level with code "${dto.code}".`,
         );
@@ -52,7 +63,9 @@ export class MappingLevelsService {
   }
 
   async remove(id: string) {
-    const existing = await this.prisma.mappingLevel.findUnique({ where: { id } });
+    const existing = await this.prisma.mappingLevel.findUnique({
+      where: { id },
+    });
     if (!existing) {
       throw new NotFoundException(`Mapping level ${id} not found`);
     }
@@ -75,7 +88,10 @@ export class MappingLevelsService {
 // (SQLSTATE 23001) instead -- there's no dedicated Prisma error code for it,
 // so this checks the underlying error text.
 function isForeignKeyRestrictError(err: unknown): boolean {
-  if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2003') {
+  if (
+    err instanceof Prisma.PrismaClientKnownRequestError &&
+    err.code === 'P2003'
+  ) {
     return true;
   }
   if (err instanceof Prisma.PrismaClientUnknownRequestError) {

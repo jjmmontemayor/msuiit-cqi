@@ -3,6 +3,8 @@ import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
+import { CollegesModule } from './colleges/colleges.module';
+import { SyllabusModule } from './syllabus/syllabus.module';
 import { ProgramsModule } from './programs/programs.module';
 import { CoursesModule } from './courses/courses.module';
 import { CurriculumCoursesModule } from './curriculum-courses/curriculum-courses.module';
@@ -34,6 +36,8 @@ import { AuthModule } from './auth/auth.module';
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
     ProgramsModule,
+    SyllabusModule,
+    CollegesModule,
     CoursesModule,
     CurriculumCoursesModule,
     ClosModule,

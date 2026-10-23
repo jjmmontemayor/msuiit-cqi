@@ -51,13 +51,13 @@ export async function updateMappingLevelWeights(programId: string, formData: For
   } catch (err) {
     if (err instanceof ApiError) {
       redirect(
-        `/admin/programs/${programId}?mappingLevelError=${encodeURIComponent(mappingLevelErrorMessage(err))}`,
+        `/admin/programs/${programId}/settings/details?mappingLevelError=${encodeURIComponent(mappingLevelErrorMessage(err))}`,
       );
     }
     throw err;
   }
 
-  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
   revalidatePath(`/programs/${programId}`, 'layout');
 }
 
@@ -81,13 +81,13 @@ export async function createMappingLevel(programId: string, formData: FormData) 
   } catch (err) {
     if (err instanceof ApiError) {
       redirect(
-        `/admin/programs/${programId}?mappingLevelError=${encodeURIComponent(mappingLevelErrorMessage(err))}`,
+        `/admin/programs/${programId}/settings/details?mappingLevelError=${encodeURIComponent(mappingLevelErrorMessage(err))}`,
       );
     }
     throw err;
   }
 
-  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
   revalidatePath(`/programs/${programId}`, 'layout');
 }
 
@@ -97,13 +97,13 @@ export async function deleteMappingLevel(programId: string, levelId: string) {
   } catch (err) {
     if (err instanceof ApiError) {
       redirect(
-        `/admin/programs/${programId}?mappingLevelError=${encodeURIComponent(mappingLevelErrorMessage(err))}`,
+        `/admin/programs/${programId}/settings/details?mappingLevelError=${encodeURIComponent(mappingLevelErrorMessage(err))}`,
       );
     }
     throw err;
   }
 
-  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
   revalidatePath(`/programs/${programId}`, 'layout');
 }
 
@@ -116,7 +116,7 @@ export async function updateAttainmentBenchmark(programId: string, formData: For
     body: JSON.stringify({ percentage }),
   });
 
-  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
   revalidatePath(`/programs/${programId}`, 'layout');
 }
 
@@ -139,6 +139,32 @@ export async function createProgram(formData: FormData) {
   redirect(`/admin/programs/${program.id}`);
 }
 
+export async function createCollege(formData: FormData) {
+  const code = str(formData, 'code');
+  const name = str(formData, 'name');
+  if (!code || !name) return;
+  await apiFetch('/colleges', { method: 'POST', body: JSON.stringify({ code, name }) });
+  revalidatePath('/admin');
+}
+
+export async function deleteCollege(collegeId: string) {
+  await apiFetch(`/colleges/${collegeId}`, { method: 'DELETE' });
+  revalidatePath('/admin');
+}
+
+// College, year established and revision cycle for one program (admin home table).
+export async function updateProgramPlacement(programId: string, formData: FormData) {
+  await apiFetch(`/programs/${programId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      collegeId: str(formData, 'collegeId') || null,
+      yearEstablished: optInt(formData, 'yearEstablished') ?? null,
+      revisionCycleYears: optInt(formData, 'revisionCycleYears') ?? undefined,
+    }),
+  });
+  revalidatePath('/admin');
+}
+
 export async function updateProgramIdentity(programId: string, formData: FormData) {
   const code = str(formData, 'code');
   const name = str(formData, 'name');
@@ -149,7 +175,7 @@ export async function updateProgramIdentity(programId: string, formData: FormDat
     body: JSON.stringify({ code, name }),
   });
 
-  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
   revalidatePath('/admin');
   revalidatePath(`/programs/${programId}`, 'layout');
   revalidatePath('/');
@@ -172,7 +198,7 @@ export async function createCohort(programId: string, formData: FormData) {
     }),
   });
 
-  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
   revalidatePath(`/programs/${programId}`);
 }
 
@@ -194,7 +220,7 @@ export async function updateCohort(
     }),
   });
 
-  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
   revalidatePath(`/programs/${programId}`);
 }
 
@@ -210,7 +236,7 @@ export async function assignCohortVersion(
     body: JSON.stringify({ curriculumVersionId: curriculumVersionId || null }),
   });
 
-  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
   revalidatePath(`/programs/${programId}`);
 }
 
@@ -225,10 +251,12 @@ export async function createCurriculumVersion(programId: string, formData: FormD
       programId,
       code,
       description: description || undefined,
+      effectiveYear: optInt(formData, 'effectiveYear'),
     }),
   });
 
-  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath('/admin');
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
   revalidatePath(`/admin/programs/${programId}/courses`);
   revalidatePath(`/admin/programs/${programId}/mappings`);
   revalidatePath(`/programs/${programId}/mappings`);
@@ -237,12 +265,12 @@ export async function createCurriculumVersion(programId: string, formData: FormD
 
 export async function deleteCurriculumVersion(programId: string, versionId: string) {
   await apiFetch(`/curriculum-versions/${versionId}`, { method: 'DELETE' });
-  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
 }
 
 export async function deleteCohort(programId: string, cohortId: string) {
   await apiFetch(`/cohorts/${cohortId}`, { method: 'DELETE' });
-  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
   revalidatePath(`/programs/${programId}`);
 }
 
@@ -259,13 +287,13 @@ export async function addCohortAdviser(
     body: JSON.stringify({ cohortId, facultyId }),
   });
 
-  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
   revalidatePath(`/programs/${programId}/clo-attainments`);
 }
 
 export async function removeCohortAdviser(programId: string, cohortAdviserId: string) {
   await apiFetch(`/cohort-advisers/${cohortAdviserId}`, { method: 'DELETE' });
-  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
   revalidatePath(`/programs/${programId}/clo-attainments`);
 }
 
@@ -302,13 +330,13 @@ export async function createPlo(programId: string, formData: FormData) {
     ),
   );
 
-  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
   revalidatePath(`/programs/${programId}`);
 }
 
 export async function deletePlo(programId: string, ploId: string) {
   await apiFetch(`/plos/${ploId}`, { method: 'DELETE' });
-  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
   revalidatePath(`/programs/${programId}`);
 }
 
@@ -326,7 +354,7 @@ export async function updatePlo(programId: string, ploId: string, formData: Form
     }),
   });
 
-  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
   revalidatePath(`/programs/${programId}`);
 }
 
@@ -357,7 +385,7 @@ export async function createPerformanceIndicator(
     }),
   });
 
-  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
   revalidatePath(`/programs/${programId}`);
 }
 
@@ -377,13 +405,13 @@ export async function updatePerformanceIndicator(
     }),
   });
 
-  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
   revalidatePath(`/programs/${programId}`);
 }
 
 export async function deletePerformanceIndicator(programId: string, piId: string) {
   await apiFetch(`/performance-indicators/${piId}`, { method: 'DELETE' });
-  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
   revalidatePath(`/programs/${programId}`);
 }
 
@@ -399,10 +427,11 @@ export async function linkExistingCourse(programId: string, formData: FormData) 
       yearLevel: optInt(formData, 'yearLevel'),
       term: str(formData, 'term') || undefined,
       electiveGroup: str(formData, 'electiveGroup') || undefined,
+      category: str(formData, 'category') || undefined,
     }),
   });
 
-  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
   revalidatePath(`/programs/${programId}`);
 }
 
@@ -413,7 +442,12 @@ export async function createAndLinkCourse(programId: string, formData: FormData)
 
   const course = await apiFetch<{ id: string }>('/courses', {
     method: 'POST',
-    body: JSON.stringify({ code, title, description: description || undefined }),
+    body: JSON.stringify({
+      code,
+      title,
+      description: description || undefined,
+      credits: optInt(formData, 'credits'),
+    }),
   });
 
   await apiFetch('/curriculum-courses', {
@@ -424,10 +458,11 @@ export async function createAndLinkCourse(programId: string, formData: FormData)
       yearLevel: optInt(formData, 'yearLevel'),
       term: str(formData, 'term') || undefined,
       electiveGroup: str(formData, 'electiveGroup') || undefined,
+      category: str(formData, 'category') || undefined,
     }),
   });
 
-  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
   revalidatePath(`/programs/${programId}`);
 }
 
@@ -435,8 +470,140 @@ export async function unlinkCourse(programId: string, curriculumCourseId: string
   await apiFetch(`/curriculum-courses/${curriculumCourseId}`, {
     method: 'DELETE',
   });
-  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
   revalidatePath(`/programs/${programId}`);
+}
+
+export async function setCourseCategory(
+  programId: string,
+  curriculumCourseId: string,
+  formData: FormData,
+) {
+  const category = str(formData, 'category');
+  await apiFetch(`/curriculum-courses/${curriculumCourseId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ category: category || null }),
+  });
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
+}
+
+export async function setCourseSchedule(
+  programId: string,
+  curriculumCourseId: string,
+  formData: FormData,
+) {
+  await apiFetch(`/curriculum-courses/${curriculumCourseId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      yearLevel: optInt(formData, 'yearLevel') ?? null,
+      term: str(formData, 'term') || null,
+    }),
+  });
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
+  revalidatePath(`/programs/${programId}`);
+}
+
+export async function moveCourse(
+  programId: string,
+  curriculumCourseId: string,
+  yearLevel: number | null,
+  term: string | null,
+) {
+  await apiFetch(`/curriculum-courses/${curriculumCourseId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ yearLevel, term }),
+  });
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
+  revalidatePath(`/programs/${programId}`);
+}
+
+function revalidateLearningPlan(programId: string, courseId: string) {
+  revalidatePath(`/admin/programs/${programId}/courses/${courseId}/learning-plan`);
+}
+
+export async function updateOfferingSyllabusDetails(
+  programId: string,
+  courseId: string,
+  offeringId: string,
+  formData: FormData,
+) {
+  await apiFetch(`/course-offerings/${offeringId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      modality: str(formData, 'modality') || null,
+      population: optInt(formData, 'population') ?? null,
+      courseworkWeight: optInt(formData, 'courseworkWeight') ?? 30,
+      references: str(formData, 'references') || null,
+      classroomPolicies: str(formData, 'classroomPolicies') || null,
+      preparedBy: str(formData, 'preparedBy') || null,
+      reviewedBy: str(formData, 'reviewedBy') || null,
+      approvedBy: str(formData, 'approvedBy') || null,
+    }),
+  });
+  revalidateLearningPlan(programId, courseId);
+}
+
+export async function saveOfferingClo(
+  programId: string,
+  courseId: string,
+  offeringId: string,
+  cloId: string,
+  formData: FormData,
+) {
+  await apiFetch(`/course-offerings/${offeringId}/clos/${cloId}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      weight: optInt(formData, 'weight') ?? 0,
+      taxonomy: str(formData, 'taxonomy') || null,
+      evidenceReference: str(formData, 'evidenceReference') || null,
+    }),
+  });
+  revalidateLearningPlan(programId, courseId);
+}
+
+export async function addAssessmentTask(
+  programId: string,
+  courseId: string,
+  offeringId: string,
+  formData: FormData,
+) {
+  const cloId = str(formData, 'cloId');
+  const name = str(formData, 'name');
+  if (!cloId || !name) return;
+  await apiFetch(`/course-offerings/${offeringId}/assessment-tasks`, {
+    method: 'POST',
+    body: JSON.stringify({
+      cloId,
+      name,
+      weight: optInt(formData, 'weight') ?? 0,
+      maxScore: optInt(formData, 'maxScore') ?? 100,
+    }),
+  });
+  revalidateLearningPlan(programId, courseId);
+}
+
+export async function updateAssessmentTask(
+  programId: string,
+  courseId: string,
+  taskId: string,
+  formData: FormData,
+) {
+  const name = str(formData, 'name');
+  if (!name) return;
+  await apiFetch(`/assessment-tasks/${taskId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      name,
+      weight: optInt(formData, 'weight') ?? 0,
+      maxScore: optInt(formData, 'maxScore') ?? 100,
+    }),
+  });
+  revalidateLearningPlan(programId, courseId);
+}
+
+export async function deleteAssessmentTask(programId: string, courseId: string, taskId: string) {
+  await apiFetch(`/assessment-tasks/${taskId}`, { method: 'DELETE' });
+  revalidateLearningPlan(programId, courseId);
 }
 
 export async function setPloAssessmentTarget(
@@ -448,7 +615,7 @@ export async function setPloAssessmentTarget(
     method: 'PATCH',
     body: JSON.stringify({ isPloAssessmentTarget }),
   });
-  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
   revalidatePath(`/programs/${programId}`);
   revalidatePath(`/admin/programs/${programId}/mappings`);
   revalidatePath(`/programs/${programId}/mappings`);
@@ -478,7 +645,7 @@ export async function updateCourseDetails(
   });
 
   revalidatePath(`/admin/programs/${programId}/courses/${courseId}`);
-  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
 }
 
 export async function createCourseOffering(
@@ -600,7 +767,7 @@ export async function deleteLearningPlanEntry(
 function revalidateCoursePaths(programId: string, courseId: string) {
   revalidatePath(`/admin/programs/${programId}/courses/${courseId}`);
   revalidatePath(`/admin/programs/${programId}/courses/${courseId}/learning-plan`);
-  revalidatePath(`/admin/programs/${programId}`);
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
   revalidatePath(`/admin/programs/${programId}/mappings`);
   revalidatePath(`/programs/${programId}/courses/${courseId}`);
   revalidatePath(`/programs/${programId}/mappings`);
