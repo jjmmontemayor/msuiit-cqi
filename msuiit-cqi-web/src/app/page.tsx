@@ -11,8 +11,9 @@ export default async function DashboardPage() {
 
   try {
     programs = await apiFetch<Program[]>('/programs');
-  } catch {
-    error = 'Could not reach the API. Is msuiit-cqi-api running on the configured port?';
+  } catch (e) {
+    const reason = e instanceof Error ? e.message : String(e);
+    error = `Could not reach the API (${process.env.NEXT_PUBLIC_API_URL ?? 'NEXT_PUBLIC_API_URL not set'}): ${reason}`;
   }
 
   return (
