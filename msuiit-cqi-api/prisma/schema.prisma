@@ -182,6 +182,7 @@ model Plo {
   program               Program                @relation(fields: [programId], references: [id], onDelete: Cascade)
   performanceIndicators PerformanceIndicator[]
   cloMappings           CloPloMapping[]
+  offeringCloPlos       OfferingCloPlo[]
 
   @@unique([programId, code])
   @@map("plos")
@@ -256,6 +257,7 @@ model Clo {
   attainments       CloAttainment[]
   offeringClos      OfferingClo[]
   assessmentTasks   AssessmentTask[]
+  offeringCloPlos   OfferingCloPlo[]
 
   @@unique([courseId, code, curriculumVersionId])
   @@map("clos")
@@ -403,28 +405,40 @@ model Student {
 }
 
 model CourseOffering {
-  id             String  @id @default(uuid())
-  courseId       String  @map("course_id")
-  academicTermId String  @map("academic_term_id")
-  section        String?
-  instructorName String? @map("instructor_name")
+  id                    String  @id @default(uuid())
+  courseId              String  @map("course_id")
+  academicTermId        String  @map("academic_term_id")
+  section               String?
+  instructorName        String? @map("instructor_name")
   // Syllabus details (see the syllabus export).
-  modality           String?
-  population         Int?
-  references         String?
-  classroomPolicies  String? @map("classroom_policies")
-  preparedBy         String? @map("prepared_by")
-  reviewedBy         String? @map("reviewed_by")
-  approvedBy         String? @map("approved_by")
+  modality              String?
+  population            Int?
+  references            String?
+  classroomPolicies     String? @map("classroom_policies")
+  preparedBy            String? @map("prepared_by")
+  reviewedBy            String? @map("reviewed_by")
+  approvedBy            String? @map("approved_by")
   // Share of the overall score from coursework; the rest is the final assessment.
-  courseworkWeight   Int     @default(30) @map("coursework_weight")
+  courseworkWeight      Int     @default(30) @map("coursework_weight")
+  // Syllabus overrides: when set they replace the course record / defaults in the exported syllabus.
+  syllabusCode          String? @map("syllabus_code")
+  syllabusTitle         String? @map("syllabus_title")
+  syllabusDescription   String? @map("syllabus_description")
+  syllabusCredits       Int?    @map("syllabus_credits")
+  syllabusPrerequisites String? @map("syllabus_prerequisites")
+  syllabusTerm          String? @map("syllabus_term")
+  archivedAt            DateTime? @map("archived_at")
+  blueprintNote         String? @map("blueprint_note")
+  gradingNote           String? @map("grading_note")
+  gradeScale            Json?   @map("grade_scale")
 
   course              Course              @relation(fields: [courseId], references: [id], onDelete: Restrict)
   academicTerm        AcademicTerm        @relation(fields: [academicTermId], references: [id], onDelete: Restrict)
   enrollments         Enrollment[]
   learningPlanEntries LearningPlanEntry[]
-  offeringClos         OfferingClo[]
-  assessmentTasks      AssessmentTask[]
+  offeringClos        OfferingClo[]
+  assessmentTasks     AssessmentTask[]
+  offeringCloPlos     OfferingCloPlo[]
 
   @@unique([courseId, academicTermId, section])
   @@map("course_offerings")
@@ -449,7 +463,8 @@ model LearningPlanEntry {
   learningResources String? @map("learning_resources")
   assessment        String?
 
-  courseOffering CourseOffering @relation(fields: [courseOfferingId], references: [id], onDelete: Cascade)
+  courseOffering  CourseOffering   @relation(fields: [courseOfferingId], references: [id], onDelete: Cascade)
+  assessmentTasks AssessmentTask[]
 
   @@map("learning_plan_entries")
 }
@@ -566,6 +581,23 @@ model UserProgramRole {
 
 // How a CLO is weighed and evidenced in one offering's syllabus. `weight` is the
 // CLO's share (percent) of the overall course score.
+// Per-offering override of one CLO-PLO alignment cell. An empty levelCode
+// means "deliberately blank"; no row means "use the program mapping".
+model OfferingCloPlo {
+  id               String @id @default(uuid())
+  courseOfferingId String @map("course_offering_id")
+  cloId            String @map("clo_id")
+  ploId            String @map("plo_id")
+  levelCode        String @map("level_code")
+
+  courseOffering CourseOffering @relation(fields: [courseOfferingId], references: [id], onDelete: Cascade)
+  clo            Clo            @relation(fields: [cloId], references: [id], onDelete: Cascade)
+  plo            Plo            @relation(fields: [ploId], references: [id], onDelete: Cascade)
+
+  @@unique([courseOfferingId, cloId, ploId])
+  @@map("offering_clo_plos")
+}
+
 model OfferingClo {
   id                String  @id @default(uuid())
   courseOfferingId  String  @map("course_offering_id")
@@ -573,6 +605,8 @@ model OfferingClo {
   weight            Int     @default(0)
   taxonomy          String?
   evidenceReference String? @map("evidence_reference")
+  // Replaces the CLO text in this offering's syllabus.
+  description       String?
 
   courseOffering CourseOffering @relation(fields: [courseOfferingId], references: [id], onDelete: Cascade)
   clo            Clo            @relation(fields: [cloId], references: [id], onDelete: Cascade)
@@ -585,16 +619,20 @@ model OfferingClo {
 // task's percent within its CLO (a CLO's tasks should total 100); the grading
 // sheet divides a student's score by `maxScore`.
 model AssessmentTask {
-  id               String @id @default(uuid())
-  courseOfferingId String @map("course_offering_id")
-  cloId            String @map("clo_id")
-  name             String
-  weight           Int    @default(0)
-  maxScore         Int    @default(100) @map("max_score")
-  displayOrder     Int    @default(0) @map("display_order")
+  id                  String  @id @default(uuid())
+  courseOfferingId    String  @map("course_offering_id")
+  cloId               String? @map("clo_id")
+  learningPlanEntryId String? @map("learning_plan_entry_id")
+  // Whether the task counts toward CLO computation (and the grading sheet score columns).
+  included            Boolean @default(true)
+  name                String
+  weight              Int     @default(0)
+  maxScore            Int     @default(100) @map("max_score")
+  displayOrder        Int     @default(0) @map("display_order")
 
-  courseOffering CourseOffering @relation(fields: [courseOfferingId], references: [id], onDelete: Cascade)
-  clo            Clo            @relation(fields: [cloId], references: [id], onDelete: Cascade)
+  courseOffering    CourseOffering     @relation(fields: [courseOfferingId], references: [id], onDelete: Cascade)
+  clo               Clo?               @relation(fields: [cloId], references: [id], onDelete: Cascade)
+  learningPlanEntry LearningPlanEntry? @relation(fields: [learningPlanEntryId], references: [id], onDelete: SetNull)
 
   @@map("assessment_tasks")
 }

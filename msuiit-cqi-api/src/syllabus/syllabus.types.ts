@@ -27,7 +27,20 @@ export interface SyllabusData {
     taxonomy: string | null;
     evidenceReference: string | null;
   }[];
-  tasks: { id: string; cloId: string; name: string; weight: number; maxScore: number }[];
+  tasks: {
+    id: string;
+    cloId: string | null;
+    learningPlanEntryId: string | null;
+    included: boolean;
+    name: string;
+    weight: number;
+    maxScore: number;
+  }[];
+  // Overrides written on the offering; null/absent falls back to the defaults.
+  termText: string | null;
+  blueprintNote: string | null;
+  gradingNote: string | null;
+  gradeScale: GradeBand[];
   plos: { id: string; code: string; description: string }[];
   // `${cloId}::${ploId}` -> level display code
   mappings: Record<string, string>;
@@ -42,7 +55,13 @@ export interface SyllabusData {
   }[];
 }
 
-export const GRADE_SCALE: { min: number; max: string; grade: string }[] = [
+export interface GradeBand {
+  min: number;
+  max: string;
+  grade: string;
+}
+
+export const GRADE_SCALE: GradeBand[] = [
   { min: 95.64, max: '100+', grade: '1.0' },
   { min: 91.18, max: '95.63', grade: '1.25' },
   { min: 86.73, max: '91.17', grade: '1.5' },

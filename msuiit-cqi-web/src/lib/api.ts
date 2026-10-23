@@ -272,6 +272,16 @@ export interface CourseOffering {
   reviewedBy: string | null;
   approvedBy: string | null;
   courseworkWeight: number;
+  archivedAt: string | null;
+  syllabusCode: string | null;
+  syllabusTitle: string | null;
+  syllabusDescription: string | null;
+  syllabusCredits: number | null;
+  syllabusPrerequisites: string | null;
+  syllabusTerm: string | null;
+  blueprintNote: string | null;
+  gradingNote: string | null;
+  course?: Course;
   academicTerm: AcademicTerm;
 }
 
@@ -281,20 +291,37 @@ export interface OfferingClo {
   weight: number;
   taxonomy: string | null;
   evidenceReference: string | null;
+  description: string | null;
 }
 
 export interface AssessmentTask {
   id: string;
   courseOfferingId: string;
-  cloId: string;
+  cloId: string | null;
+  learningPlanEntryId: string | null;
+  included: boolean;
   name: string;
   weight: number;
   maxScore: number;
 }
 
+export interface GradeBand {
+  min: number;
+  max: string;
+  grade: string;
+}
+
 export interface OfferingBlueprint {
   clos: { clo: Clo; setting: OfferingClo | null }[];
   tasks: AssessmentTask[];
+  gradeScale: GradeBand[];
+  customGradeScale: boolean;
+  alignment: {
+    plos: Plo[];
+    defaults: Record<string, string>;
+    overrides: { cloId: string; ploId: string; levelCode: string }[];
+    levels: { displayCode: string; label: string }[];
+  };
 }
 
 export interface LearningPlanEntry {

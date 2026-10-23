@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsInt,
   IsOptional,
   IsString,
@@ -9,6 +10,10 @@ import {
 } from 'class-validator';
 
 export class UpsertOfferingCloDto {
+  @IsOptional()
+  @IsString()
+  description?: string | null;
+
   @IsOptional()
   @IsInt()
   @Min(0)
@@ -26,8 +31,17 @@ export class UpsertOfferingCloDto {
 }
 
 export class CreateAssessmentTaskDto {
+  @IsOptional()
   @IsUUID()
-  cloId!: string;
+  cloId?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  learningPlanEntryId?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  included?: boolean;
 
   @IsString()
   @MaxLength(255)
@@ -47,6 +61,14 @@ export class CreateAssessmentTaskDto {
 
 export class UpdateAssessmentTaskDto {
   @IsOptional()
+  @IsUUID()
+  cloId?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  included?: boolean;
+
+  @IsOptional()
   @IsString()
   @MaxLength(255)
   name?: string;
@@ -61,4 +83,18 @@ export class UpdateAssessmentTaskDto {
   @IsInt()
   @Min(1)
   maxScore?: number;
+}
+
+export class SetAlignmentDto {
+  @IsUUID()
+  cloId!: string;
+
+  @IsUUID()
+  ploId!: string;
+
+  // A level display code, '' for a deliberate blank, null to use the program mapping.
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  levelCode?: string | null;
 }

@@ -1,5 +1,5 @@
 import { codeNumber, esc, semesterName } from './typst.util';
-import { GRADE_SCALE, type SyllabusData } from './syllabus.types';
+import type { SyllabusData } from './syllabus.types';
 
 // Builds the syllabus as Typst markup, following the department template
 // (bscs/syllabus_format/main.typ): same page setup, header and section order.
@@ -72,7 +72,8 @@ export function buildSyllabusTyp(d: SyllabusData): string {
   const out: string[] = [PAGE_AND_HEADER];
 
   // 1. Course information
-  const termText = `${d.term.schoolYearStart} - ${d.term.schoolYearEnd}, ${semesterName(d.term.semester)}`;
+  const termText =
+    d.termText ?? `${d.term.schoolYearStart} - ${d.term.schoolYearEnd}, ${semesterName(d.term.semester)}`;
   out.push(`= Course Information
 
 #table(
@@ -130,7 +131,7 @@ ${
   }
 
   // 4. Assessment blueprint
-  const tasksByClo = (cloId: string) => d.tasks.filter((t) => t.cloId === cloId);
+  const tasksByClo = (cloId: string) => d.tasks.filter((t) => t.included && t.cloId === cloId);
   const bpRows = d.clos
     .map((c) => {
       const tasks = tasksByClo(c.id);
@@ -164,7 +165,7 @@ ${
 )`
 }
 
-The weight of all assessment tasks that will contribute to the achievement of a CLO will have a total of 100%. The CLO weights are used to compute the overall score of CLO attainment.
+${d.blueprintNote ? esc(d.blueprintNote) : 'The weight of all assessment tasks that will contribute to the achievement of a CLO will have a total of 100%. The CLO weights are used to compute the overall score of CLO attainment.'}
 `);
 
   // 5. Learning plan
@@ -234,7 +235,9 @@ ${planHeader}
 
   // 6. Grading
   const finalWeight = 100 - d.offering.courseworkWeight;
-  const scaleRows = GRADE_SCALE.map(
+  const scaleRows = [...d.gradeScale]
+    .sort((a, b) => b.min - a.min)
+    .map(
     (r) =>
       `[${r.min === 0 ? `below – ${r.max}` : `${r.min.toFixed(2)} - ${r.max}`}], [${r.grade}]`,
   ).join(',\n    ');
@@ -260,7 +263,7 @@ The overall score will be determined based on the following scheme:
   )
 ]
 
-The number of exams or quizzes, homeworks or assignments, laboratory activities, and other deliverables will vary for the whole semester. The student is expected to get at least 60% of the total marks of every measurement. The total weight of all these measurements is *100%*.
+${d.gradingNote ? esc(d.gradingNote) : 'The number of exams or quizzes, homeworks or assignments, laboratory activities, and other deliverables will vary for the whole semester. The student is expected to get at least 60% of the total marks of every measurement. The total weight of all these measurements is *100%*.'}
 
 #colbreak()
 

@@ -6,6 +6,7 @@ import { NodeCompiler } from '@myriaddreamin/typst-ts-node-compiler';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateAssessmentTaskDto,
+  SetAlignmentDto,
   UpdateAssessmentTaskDto,
   UpsertOfferingCloDto,
 } from './dto/blueprint.dto';
@@ -14,7 +15,7 @@ import {
   buildGradingSheetXlsx,
 } from './grading-sheet';
 import { buildSyllabusTyp } from './syllabus.typ';
-import type { SyllabusData } from './syllabus.types';
+import { GRADE_SCALE, type GradeBand, type SyllabusData } from './syllabus.types';
 
 export interface ExportFile {
   filename: string;
@@ -52,6 +53,57 @@ export class SyllabusService {
     return clos.filter((c) => c.curriculumVersionId === versionId);
   }
 
+  // PLOs of the program the CLOs belong to, with the program's default CLO-PLO levels.
+  private async alignmentDefaults(clos: { id: string; curriculumVersionId: string }[]) {
+    if (clos.length === 0) return { programId: null, plos: [], defaults: {} as Record<string, string> };
+    const version = await this.prisma.curriculumVersion.findUnique({
+      where: { id: clos[0].curriculumVersionId },
+    });
+    if (!version) return { programId: null, plos: [], defaults: {} as Record<string, string> };
+    const [plos, mappings] = await Promise.all([
+      this.prisma.plo.findMany({
+        where: { programId: version.programId },
+        orderBy: { displayOrder: 'asc' },
+      }),
+      this.prisma.cloPloMapping.findMany({
+        where: { cloId: { in: clos.map((c) => c.id) } },
+        include: { mappingLevel: true },
+      }),
+    ]);
+    const defaults: Record<string, string> = {};
+    for (const m of mappings) {
+      defaults[`${m.cloId}::${m.ploId}`] = m.mappingLevel.displayCode;
+    }
+    return { programId: version.programId, plos, defaults };
+  }
+
+  async setAlignment(offeringId: string, dto: SetAlignmentDto) {
+    await this.findOffering(offeringId);
+    const where = {
+      courseOfferingId_cloId_ploId: {
+        courseOfferingId: offeringId,
+        cloId: dto.cloId,
+        ploId: dto.ploId,
+      },
+    };
+    if (dto.levelCode == null) {
+      await this.prisma.offeringCloPlo.deleteMany({
+        where: { courseOfferingId: offeringId, cloId: dto.cloId, ploId: dto.ploId },
+      });
+      return { ok: true };
+    }
+    return this.prisma.offeringCloPlo.upsert({
+      where,
+      create: {
+        courseOfferingId: offeringId,
+        cloId: dto.cloId,
+        ploId: dto.ploId,
+        levelCode: dto.levelCode,
+      },
+      update: { levelCode: dto.levelCode },
+    });
+  }
+
   async getBlueprint(offeringId: string) {
     const offering = await this.findOffering(offeringId);
     const clos = await this.currentClos(offering.courseId);
@@ -64,12 +116,36 @@ export class SyllabusService {
         orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
       }),
     ]);
+    const { programId, plos, defaults } = await this.alignmentDefaults(clos);
+    const [overrides, levels] = await Promise.all([
+      this.prisma.offeringCloPlo.findMany({ where: { courseOfferingId: offeringId } }),
+      programId
+        ? this.prisma.mappingLevel.findMany({
+            where: { programId },
+            orderBy: { weight: 'desc' },
+          })
+        : Promise.resolve([]),
+    ]);
     return {
       clos: clos.map((clo) => ({
         clo,
         setting: settings.find((s) => s.cloId === clo.id) ?? null,
       })),
       tasks,
+      gradeScale: Array.isArray(offering.gradeScale) && offering.gradeScale.length > 0
+        ? (offering.gradeScale as unknown as GradeBand[])
+        : GRADE_SCALE,
+      customGradeScale: Array.isArray(offering.gradeScale) && offering.gradeScale.length > 0,
+      alignment: {
+        plos,
+        defaults,
+        overrides: overrides.map((o) => ({
+          cloId: o.cloId,
+          ploId: o.ploId,
+          levelCode: o.levelCode,
+        })),
+        levels: levels.map((l) => ({ displayCode: l.displayCode, label: l.label })),
+      },
     };
   }
 
@@ -117,10 +193,8 @@ export class SyllabusService {
   private async loadData(offeringId: string): Promise<SyllabusData> {
     const offering = await this.findOffering(offeringId);
     const clos = await this.currentClos(offering.courseId);
-    const cloIds = clos.map((c) => c.id);
-    const versionId = clos[0]?.curriculumVersionId;
 
-    const [settings, tasks, mappings, plan, version] = await Promise.all([
+    const [settings, tasks, overrides, plan, align] = await Promise.all([
       this.prisma.offeringClo.findMany({
         where: { courseOfferingId: offeringId },
       }),
@@ -128,38 +202,33 @@ export class SyllabusService {
         where: { courseOfferingId: offeringId },
         orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
       }),
-      this.prisma.cloPloMapping.findMany({
-        where: { cloId: { in: cloIds } },
-        include: { mappingLevel: true },
+      this.prisma.offeringCloPlo.findMany({
+        where: { courseOfferingId: offeringId },
       }),
       this.prisma.learningPlanEntry.findMany({
         where: { courseOfferingId: offeringId },
         orderBy: { displayOrder: 'asc' },
       }),
-      versionId
-        ? this.prisma.curriculumVersion.findUnique({ where: { id: versionId } })
-        : Promise.resolve(null),
+      this.alignmentDefaults(clos),
     ]);
 
-    const plos = version
-      ? await this.prisma.plo.findMany({
-          where: { programId: version.programId },
-          orderBy: { displayOrder: 'asc' },
-        })
-      : [];
-
-    const mapped: Record<string, string> = {};
-    for (const m of mappings) {
-      mapped[`${m.cloId}::${m.ploId}`] = m.mappingLevel.displayCode;
+    const plos = align.plos;
+    const mapped: Record<string, string> = { ...align.defaults };
+    for (const o of overrides) {
+      const key = `${o.cloId}::${o.ploId}`;
+      if (o.levelCode === '') delete mapped[key];
+      else mapped[key] = o.levelCode;
     }
+    const scale = offering.gradeScale as GradeBand[] | null;
 
     return {
       course: {
-        code: offering.course.code,
-        title: offering.course.title,
-        description: offering.course.description,
-        credits: offering.course.credits,
-        prerequisites: offering.course.prerequisites,
+        code: offering.syllabusCode || offering.course.code,
+        title: offering.syllabusTitle || offering.course.title,
+        description: offering.syllabusDescription || offering.course.description,
+        credits: offering.syllabusCredits ?? offering.course.credits,
+        prerequisites:
+          offering.syllabusPrerequisites || offering.course.prerequisites,
       },
       term: {
         schoolYearStart: offering.academicTerm.schoolYearStart,
@@ -178,12 +247,16 @@ export class SyllabusService {
         approvedBy: offering.approvedBy,
         courseworkWeight: offering.courseworkWeight,
       },
+      termText: offering.syllabusTerm || null,
+      blueprintNote: offering.blueprintNote || null,
+      gradingNote: offering.gradingNote || null,
+      gradeScale: Array.isArray(scale) && scale.length > 0 ? scale : GRADE_SCALE,
       clos: clos.map((clo) => {
         const s = settings.find((x) => x.cloId === clo.id);
         return {
           id: clo.id,
           code: clo.code,
-          description: clo.description,
+          description: s?.description || clo.description,
           weight: s?.weight ?? 0,
           taxonomy: s?.taxonomy ?? null,
           evidenceReference: s?.evidenceReference ?? null,
@@ -192,6 +265,8 @@ export class SyllabusService {
       tasks: tasks.map((t) => ({
         id: t.id,
         cloId: t.cloId,
+        learningPlanEntryId: t.learningPlanEntryId,
+        included: t.included,
         name: t.name,
         weight: t.weight,
         maxScore: t.maxScore,
@@ -202,15 +277,18 @@ export class SyllabusService {
         description: p.description,
       })),
       mappings: mapped,
-      plan: plan.map((e) => ({
+      plan: plan.map((e) => {
+        const names = tasks.filter((t) => t.learningPlanEntryId === e.id).map((t) => t.name);
+        return {
         weekLabel: e.weekLabel,
         topics: e.topics,
         lessonOutcome: e.lessonOutcome,
         coLabels: e.coLabels,
         methodology: e.methodology,
         learningResources: e.learningResources,
-        assessment: e.assessment,
-      })),
+        assessment: names.length > 0 ? names.join(', ') : e.assessment,
+        };
+      }),
     };
   }
 

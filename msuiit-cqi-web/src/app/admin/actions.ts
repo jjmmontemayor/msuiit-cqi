@@ -538,6 +538,14 @@ export async function updateOfferingSyllabusDetails(
       preparedBy: str(formData, 'preparedBy') || null,
       reviewedBy: str(formData, 'reviewedBy') || null,
       approvedBy: str(formData, 'approvedBy') || null,
+      syllabusCode: str(formData, 'syllabusCode') || null,
+      syllabusTitle: str(formData, 'syllabusTitle') || null,
+      syllabusDescription: str(formData, 'syllabusDescription') || null,
+      syllabusCredits: optInt(formData, 'syllabusCredits') ?? null,
+      syllabusPrerequisites: str(formData, 'syllabusPrerequisites') || null,
+      syllabusTerm: str(formData, 'syllabusTerm') || null,
+      blueprintNote: str(formData, 'blueprintNote') || null,
+      gradingNote: str(formData, 'gradingNote') || null,
     }),
   });
   revalidateLearningPlan(programId, courseId);
@@ -556,7 +564,66 @@ export async function saveOfferingClo(
       weight: optInt(formData, 'weight') ?? 0,
       taxonomy: str(formData, 'taxonomy') || null,
       evidenceReference: str(formData, 'evidenceReference') || null,
+      description: str(formData, 'description') || null,
     }),
+  });
+  revalidateLearningPlan(programId, courseId);
+}
+
+// value: '__default' uses the program mapping, '' leaves the cell blank, anything
+// else is a mapping level display code.
+export async function setOfferingAlignment(
+  programId: string,
+  courseId: string,
+  offeringId: string,
+  formData: FormData,
+) {
+  const value = String(formData.get('value') ?? '__default');
+  await apiFetch(`/course-offerings/${offeringId}/alignment`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      cloId: str(formData, 'cloId'),
+      ploId: str(formData, 'ploId'),
+      levelCode: value === '__default' ? null : value,
+    }),
+  });
+  revalidateLearningPlan(programId, courseId);
+}
+
+export async function saveGradeScale(
+  programId: string,
+  courseId: string,
+  offeringId: string,
+  formData: FormData,
+) {
+  const mins = formData.getAll('min').map(String);
+  const maxes = formData.getAll('max').map(String);
+  const grades = formData.getAll('grade').map(String);
+  const gradeScale = mins
+    .map((m, i) => ({
+      min: Number(m),
+      max: (maxes[i] ?? '').trim(),
+      grade: (grades[i] ?? '').trim(),
+      filled: m.trim() !== '' && (grades[i] ?? '').trim() !== '',
+    }))
+    .filter((b) => b.filled && Number.isFinite(b.min))
+    .map(({ min, max, grade }) => ({ min, max, grade }));
+  if (gradeScale.length === 0) return;
+  await apiFetch(`/course-offerings/${offeringId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ gradeScale }),
+  });
+  revalidateLearningPlan(programId, courseId);
+}
+
+export async function resetGradeScale(
+  programId: string,
+  courseId: string,
+  offeringId: string,
+) {
+  await apiFetch(`/course-offerings/${offeringId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ gradeScale: null }),
   });
   revalidateLearningPlan(programId, courseId);
 }
@@ -597,6 +664,64 @@ export async function updateAssessmentTask(
       weight: optInt(formData, 'weight') ?? 0,
       maxScore: optInt(formData, 'maxScore') ?? 100,
     }),
+  });
+  revalidateLearningPlan(programId, courseId);
+}
+
+// Adds an assessment (e.g. "Quiz") to a learning plan week as a task of the
+// offering. Numbered per type ("Quiz 1", "Quiz 2"), assigned to the week's
+// first CLO when it has one, and counted toward CLO computation by default.
+export async function addEntryAssessment(
+  programId: string,
+  courseId: string,
+  offeringId: string,
+  entryId: string,
+  type: string,
+  numbered: boolean,
+) {
+  const [entry, clos, blueprint] = await Promise.all([
+    apiFetch<{ coLabels: string | null }>(`/learning-plan-entries/${entryId}`),
+    apiFetch<{ id: string; code: string }[]>(`/clos?courseId=${courseId}`),
+    apiFetch<{ tasks: { name: string }[] }>(`/course-offerings/${offeringId}/blueprint`),
+  ]);
+  const labels = (entry.coLabels ?? '').split(',').map((l) => l.trim()).filter(Boolean);
+  const clo = clos.find((c) => labels.includes(c.code));
+  const same = blueprint.tasks.filter((t) => t.name === type || t.name.startsWith(`${type} `)).length;
+  const name = numbered ? `${type} ${same + 1}` : same > 0 ? `${type} ${same + 1}` : type;
+  await apiFetch(`/course-offerings/${offeringId}/assessment-tasks`, {
+    method: 'POST',
+    body: JSON.stringify({
+      name,
+      cloId: clo?.id,
+      learningPlanEntryId: entryId,
+      included: true,
+    }),
+  });
+  revalidateLearningPlan(programId, courseId);
+}
+
+export async function setAssessmentIncluded(
+  programId: string,
+  courseId: string,
+  taskId: string,
+  included: boolean,
+) {
+  await apiFetch(`/assessment-tasks/${taskId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ included }),
+  });
+  revalidateLearningPlan(programId, courseId);
+}
+
+export async function setAssessmentClo(
+  programId: string,
+  courseId: string,
+  taskId: string,
+  formData: FormData,
+) {
+  await apiFetch(`/assessment-tasks/${taskId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ cloId: str(formData, 'cloId') || null }),
   });
   revalidateLearningPlan(programId, courseId);
 }
@@ -752,6 +877,30 @@ export async function reorderLearningPlanEntries(
     ),
   );
 
+  revalidateCoursePaths(programId, courseId);
+}
+
+// Archiving hides a learning plan from the lists but keeps all its data.
+export async function setLearningPlanArchived(
+  programId: string,
+  courseId: string,
+  offeringId: string,
+  archived: boolean,
+) {
+  await apiFetch(`/course-offerings/${offeringId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ archived }),
+  });
+  revalidateCoursePaths(programId, courseId);
+}
+
+// Permanent: also removes the plan's entries, blueprint and enrolled-student records.
+export async function deleteLearningPlan(
+  programId: string,
+  courseId: string,
+  offeringId: string,
+) {
+  await apiFetch(`/course-offerings/${offeringId}`, { method: 'DELETE' });
   revalidateCoursePaths(programId, courseId);
 }
 

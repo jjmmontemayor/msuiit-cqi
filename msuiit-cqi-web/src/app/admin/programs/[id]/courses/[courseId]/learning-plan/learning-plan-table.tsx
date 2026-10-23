@@ -5,17 +5,22 @@ import {
   deleteLearningPlanEntry,
   reorderLearningPlanEntries,
 } from "../../../../../actions";
-import type { LearningPlanEntry } from "@/lib/api";
+import type { AssessmentTask, LearningPlanEntry } from "@/lib/api";
+import { EntryAssessments } from "./entry-assessments";
 import { DeleteButton } from "@/components/icon-buttons";
 
 export function LearningPlanTable({
   programId,
   courseId,
+  offeringId,
   entries,
+  tasks,
 }: {
   programId: string;
   courseId: string;
+  offeringId: string;
   entries: LearningPlanEntry[];
+  tasks: AssessmentTask[];
 }) {
   const [rows, setRows] = useState(entries);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -79,14 +84,26 @@ export function LearningPlanTable({
                 {entry.lessonOutcome}
               </td>
               <td className="px-3 py-2">{entry.coLabels}</td>
-              <td className="px-3 py-2 text-neutral-600 dark:text-neutral-400">
+              <td className="whitespace-pre-line px-3 py-2 text-neutral-600 dark:text-neutral-400">
                 {entry.methodology}
               </td>
               <td className="px-3 py-2 text-neutral-600 dark:text-neutral-400">
                 {entry.learningResources}
               </td>
-              <td className="px-3 py-2 text-neutral-600 dark:text-neutral-400">
-                {entry.assessment}
+              <td className="min-w-48 px-3 py-2 text-neutral-600 dark:text-neutral-400">
+                <EntryAssessments
+                  programId={programId}
+                  courseId={courseId}
+                  offeringId={offeringId}
+                  entryId={entry.id}
+                  tasks={tasks.filter((t) => t.learningPlanEntryId === entry.id)}
+                />
+                {entry.assessment &&
+                  !tasks.some((t) => t.learningPlanEntryId === entry.id) && (
+                    <p className="mt-1 text-xs text-neutral-500">
+                      {entry.assessment}
+                    </p>
+                  )}
               </td>
               <td className="px-3 py-2">
                 <form

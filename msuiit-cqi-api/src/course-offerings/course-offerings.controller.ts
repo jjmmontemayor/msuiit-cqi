@@ -27,8 +27,13 @@ export class CourseOfferingsController {
   findAll(
     @Query('courseId') courseId?: string,
     @Query('academicTermId') academicTermId?: string,
+    @Query('archived') archived?: string,
   ) {
-    return this.courseOfferingsService.findAll({ courseId, academicTermId });
+    return this.courseOfferingsService.findAll({
+      courseId,
+      academicTermId,
+      archived,
+    });
   }
 
   @Get(':id')

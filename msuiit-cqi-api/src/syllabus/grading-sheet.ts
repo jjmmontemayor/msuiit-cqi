@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { GRADE_SCALE, type SyllabusData } from './syllabus.types';
+import type { SyllabusData } from './syllabus.types';
 
 export interface SheetStudent {
   studentNumber: string;
@@ -18,8 +18,15 @@ function colName(index: number): string {
 
 function orderedTasks(d: SyllabusData) {
   return d.clos.flatMap((clo) =>
-    d.tasks.filter((t) => t.cloId === clo.id).map((task) => ({ clo, task })),
+    d.tasks
+      .filter((t) => t.included && t.cloId === clo.id)
+      .map((task) => ({ clo, task })),
   );
+}
+
+// Recorded but not counted toward any CLO: shown as plain columns at the end.
+function uncountedTasks(d: SyllabusData) {
+  return d.tasks.filter((t) => !t.included || !t.cloId);
 }
 
 function termLine(d: SyllabusData): string {
@@ -55,6 +62,7 @@ export function buildGradingSheetXlsx(
   students: SheetStudent[],
 ): Buffer {
   const ordered = orderedTasks(d);
+  const extras = uncountedTasks(d);
   const taskStart = 2; // columns A, B = student number, name
   const cloCount = d.clos.length;
   const cloResultStart = taskStart + ordered.length;
@@ -84,6 +92,12 @@ export function buildGradingSheetXlsx(
   taskRow.push('Overall (%)', 'Equivalent grade', 'Remarks');
   weightRow.push('', '', '');
   maxRow.push('', '', '');
+  for (const t of extras) {
+    cloRow.push('Not counted');
+    taskRow.push(t.name);
+    weightRow.push('');
+    maxRow.push(t.maxScore);
+  }
 
   const aoa: Cell[][] = [
     [`${d.course.code} — ${d.course.title}`],
@@ -129,7 +143,7 @@ export function buildGradingSheetXlsx(
     ws[`${colName(gradeCol)}${r}`] = {
       t: 's',
       v: '',
-      f: `IF(${overall}="","",LOOKUP(${overall},'Grade Scale'!$A$2:$A$${GRADE_SCALE.length + 1},'Grade Scale'!$C$2:$C$${GRADE_SCALE.length + 1}))`,
+      f: `IF(${overall}="","",LOOKUP(${overall},'Grade Scale'!$A$2:$A${d.gradeScale.length + 1},'Grade Scale'!$C$2:$C${d.gradeScale.length + 1}))`,
     };
     ws[`${colName(remarksCol)}${r}`] = {
       t: 's',
@@ -140,12 +154,12 @@ export function buildGradingSheetXlsx(
 
   ws['!ref'] = XLSX.utils.encode_range({
     s: { r: 0, c: 0 },
-    e: { r: firstStudentRow + rows.length - 1, c: remarksCol },
+    e: { r: firstStudentRow + rows.length - 1, c: remarksCol + extras.length },
   });
   ws['!cols'] = [
     { wch: 18 },
     { wch: 30 },
-    ...Array.from({ length: ordered.length + cloCount + 3 }, () => ({
+    ...Array.from({ length: ordered.length + cloCount + 3 + extras.length }, () => ({
       wch: 14,
     })),
   ];
@@ -153,8 +167,8 @@ export function buildGradingSheetXlsx(
   // Ascending minimums so the sheet's LOOKUP can find the grade.
   const scale = XLSX.utils.aoa_to_sheet([
     ['Minimum rate (%)', 'Range', 'Equivalent grade'],
-    ...[...GRADE_SCALE]
-      .reverse()
+    ...[...d.gradeScale]
+      .sort((a, b) => a.min - b.min)
       .map((r) => [
         r.min,
         r.min === 0 ? `below ${r.max}` : `${r.min} - ${r.max}`,
@@ -177,6 +191,7 @@ export function buildGradingSheetCsv(
   students: SheetStudent[],
 ): string {
   const ordered = orderedTasks(d);
+  const extras = uncountedTasks(d);
   const csv = (s: string | number) => {
     const v = String(s);
     return /[",\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
@@ -185,16 +200,16 @@ export function buildGradingSheetCsv(
   const lines = [
     line([`${d.course.code} — ${d.course.title}`]),
     line([termLine(d)]),
-    line(['', 'CLO', ...ordered.map((o) => o.clo.code)]),
-    line(['', 'Assessment task', ...ordered.map((o) => o.task.name)]),
-    line(['', 'Weight within CLO (%)', ...ordered.map((o) => o.task.weight)]),
-    line(['', 'Max score', ...ordered.map((o) => o.task.maxScore)]),
+    line(['', 'CLO', ...ordered.map((o) => o.clo.code), ...extras.map(() => 'Not counted')]),
+    line(['', 'Assessment task', ...ordered.map((o) => o.task.name), ...extras.map((t) => t.name)]),
+    line(['', 'Weight within CLO (%)', ...ordered.map((o) => o.task.weight), ...extras.map(() => '')]),
+    line(['', 'Max score', ...ordered.map((o) => o.task.maxScore), ...extras.map((t) => t.maxScore)]),
     line([
       '',
       'CLO weight in overall (%)',
       ...d.clos.map((c) => `${c.code}=${c.weight}`),
     ]),
-    line(['Student ID Number', 'Student Name', ...ordered.map((o) => o.task.name)]),
+    line(['Student ID Number', 'Student Name', ...ordered.map((o) => o.task.name), ...extras.map((t) => t.name)]),
   ];
   for (const s of studentRows(students)) {
     lines.push(line([s.studentNumber, s.name]));

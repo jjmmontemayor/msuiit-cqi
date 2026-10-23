@@ -4,6 +4,7 @@ import {
   apiFetch,
   ApiError,
   type AcademicTerm,
+  type AssessmentTask,
   type Clo,
   type Course,
   type CourseOffering,
@@ -13,9 +14,14 @@ import {
 import {
   createCourseOffering,
   createLearningPlanEntry,
+  deleteLearningPlan,
+  setLearningPlanArchived,
 } from "../../../../../actions";
 import { CourseAdminTabs } from "../course-admin-tabs";
+import { ConfirmForm } from "./confirm-form";
+import { DeleteButton } from "@/components/icon-buttons";
 import { LearningPlanTable } from "./learning-plan-table";
+import { MethodologyField } from "./methodology-field";
 import { SyllabusPanel } from "./syllabus-panel";
 
 export const dynamic = "force-dynamic";
@@ -111,14 +117,7 @@ function AddEntryForm({
           </div>
         )}
       </fieldset>
-      <label className="text-sm sm:col-span-2">
-        Teaching/learning methodology
-        <textarea
-          name="methodology"
-          rows={2}
-          className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-        />
-      </label>
+      <MethodologyField className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900" />
       <label className="text-sm sm:col-span-2">
         Learning resources
         <textarea
@@ -127,13 +126,9 @@ function AddEntryForm({
           className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
         />
       </label>
-      <label className="text-sm sm:col-span-4">
-        Assessment
-        <input
-          name="assessment"
-          className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-        />
-      </label>
+      <p className="text-xs text-neutral-500 sm:col-span-4">
+        Assessments are added per week from the table once the entry exists.
+      </p>
       <div className="sm:col-span-4">
         <button
           type="submit"
@@ -152,13 +147,18 @@ export default async function AdminCourseLearningPlanPage({
   params: Promise<{ id: string; courseId: string }>;
 }) {
   const { id, courseId } = await params;
-  const [program, course, academicTerms, offerings, clos] = await Promise.all([
+  const [program, course, academicTerms, allOfferings, clos] = await Promise.all([
     getProgram(id),
     getCourse(courseId),
     apiFetch<AcademicTerm[]>("/academic-terms"),
-    apiFetch<CourseOffering[]>(`/course-offerings?courseId=${courseId}`),
+    apiFetch<CourseOffering[]>(
+      `/course-offerings?courseId=${courseId}&archived=include`,
+    ),
     apiFetch<Clo[]>(`/clos?courseId=${courseId}`),
   ]);
+
+  const offerings = allOfferings.filter((o) => !o.archivedAt);
+  const archivedOfferings = allOfferings.filter((o) => o.archivedAt);
 
   const entriesByOffering = new Map(
     await Promise.all(
@@ -169,6 +169,22 @@ export default async function AdminCourseLearningPlanPage({
             await apiFetch<LearningPlanEntry[]>(
               `/learning-plan-entries?courseOfferingId=${o.id}`,
             ),
+          ] as const,
+      ),
+    ),
+  );
+
+  const tasksByOffering = new Map(
+    await Promise.all(
+      offerings.map(
+        async (o) =>
+          [
+            o.id,
+            (
+              await apiFetch<{ tasks: AssessmentTask[] }>(
+                `/course-offerings/${o.id}/blueprint`,
+              )
+            ).tasks,
           ] as const,
       ),
     ),
@@ -207,6 +223,7 @@ export default async function AdminCourseLearningPlanPage({
           <div className="mt-3 space-y-3">
             {offerings.map((o, i) => {
               const entries = entriesByOffering.get(o.id) ?? [];
+              const tasks = tasksByOffering.get(o.id) ?? [];
               return (
                 <details
                   key={o.id}
@@ -243,28 +260,117 @@ export default async function AdminCourseLearningPlanPage({
                           Drag a row by its handle to reorder.
                         </p>
                         <LearningPlanTable
+                          key={entries.map((e) => e.id).join(",")}
                           programId={program.id}
                           courseId={course.id}
+                          offeringId={o.id}
                           entries={entries}
+                          tasks={tasks}
                         />
                       </>
                     )}
-                    <SyllabusPanel
-                      programId={program.id}
-                      courseId={course.id}
-                      offering={o}
-                    />
                     <AddEntryForm
                       programId={program.id}
                       courseId={course.id}
                       offeringId={o.id}
                       clos={clos}
                     />
+                    <SyllabusPanel
+                      programId={program.id}
+                      courseId={course.id}
+                      offering={o}
+                    />
+                    <div className="flex items-center justify-end gap-2 border-t border-neutral-200 pt-3 dark:border-neutral-800">
+                      <form
+                        action={setLearningPlanArchived.bind(
+                          null,
+                          program.id,
+                          course.id,
+                          o.id,
+                          true,
+                        )}
+                      >
+                        <button
+                          type="submit"
+                          className="rounded-md border border-neutral-300 px-3 py-1 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                        >
+                          Archive plan
+                        </button>
+                      </form>
+                      <ConfirmForm
+                        action={deleteLearningPlan.bind(
+                          null,
+                          program.id,
+                          course.id,
+                          o.id,
+                        )}
+                        message="Delete this learning plan permanently? Its weekly entries, assessment blueprint and enrolled-student records are deleted too. Archive it instead to keep the data."
+                      >
+                        <DeleteButton title="Delete plan" />
+                      </ConfirmForm>
+                    </div>
                   </div>
                 </details>
               );
             })}
           </div>
+        )}
+
+        {archivedOfferings.length > 0 && (
+          <details className="mt-3 rounded-md border border-neutral-200 dark:border-neutral-800">
+            <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium">
+              Archived learning plans ({archivedOfferings.length})
+            </summary>
+            <ul className="divide-y divide-neutral-200 border-t border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
+              {archivedOfferings.map((o) => (
+                <li
+                  key={o.id}
+                  className="flex items-center justify-between gap-3 px-4 py-2 text-sm"
+                >
+                  <span>
+                    <span className="font-medium">{o.academicTerm.label}</span>
+                    {o.section && (
+                      <span className="ml-2 text-neutral-500">
+                        Section {o.section}
+                      </span>
+                    )}
+                    <span className="ml-2 text-neutral-600 dark:text-neutral-400">
+                      {o.instructorName ?? "No instructor set"}
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <form
+                      action={setLearningPlanArchived.bind(
+                        null,
+                        program.id,
+                        course.id,
+                        o.id,
+                        false,
+                      )}
+                    >
+                      <button
+                        type="submit"
+                        className="rounded-md border border-neutral-300 px-3 py-1 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                      >
+                        Restore
+                      </button>
+                    </form>
+                    <ConfirmForm
+                      action={deleteLearningPlan.bind(
+                        null,
+                        program.id,
+                        course.id,
+                        o.id,
+                      )}
+                      message="Delete this learning plan permanently? Its weekly entries, assessment blueprint and enrolled-student records are deleted too."
+                    >
+                      <DeleteButton title="Delete plan" />
+                    </ConfirmForm>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </details>
         )}
 
         <form

@@ -15,6 +15,7 @@ import type { Response } from 'express';
 import { SyllabusService, type ExportFile } from './syllabus.service';
 import {
   CreateAssessmentTaskDto,
+  SetAlignmentDto,
   UpdateAssessmentTaskDto,
   UpsertOfferingCloDto,
 } from './dto/blueprint.dto';
@@ -44,6 +45,11 @@ export class SyllabusController {
     @Body() dto: UpsertOfferingCloDto,
   ) {
     return this.syllabusService.upsertOfferingClo(id, cloId, dto);
+  }
+
+  @Put('course-offerings/:id/alignment')
+  setAlignment(@Param('id') id: string, @Body() dto: SetAlignmentDto) {
+    return this.syllabusService.setAlignment(id, dto);
   }
 
   @Post('course-offerings/:id/assessment-tasks')

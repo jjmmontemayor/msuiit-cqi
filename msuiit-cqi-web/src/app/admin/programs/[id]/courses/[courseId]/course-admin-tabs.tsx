@@ -14,7 +14,7 @@ export function CourseAdminTabs({
   const base = `/admin/programs/${programId}/courses/${courseId}`;
   const tabs = [
     { href: base, label: 'Course Details & CLOs' },
-    { href: `${base}/learning-plan`, label: 'Learning Plan' },
+    { href: `${base}/learning-plan`, label: 'Learning Plans' },
   ];
 
   return (
