@@ -3,6 +3,7 @@
 import type { Clo, LearningPlanEntry } from "@/lib/api";
 import { MethodologyField, ResourcesField } from "./methodology-field";
 import { OutcomesField } from "./outcomes-field";
+import { WeekField } from "./week-field";
 
 const field =
   "mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900";
@@ -11,6 +12,7 @@ const field =
 export function EntryForm({
   action,
   clos,
+  weeks,
   entry,
   title,
   submitLabel,
@@ -19,6 +21,7 @@ export function EntryForm({
 }: {
   action: (formData: FormData) => void | Promise<void>;
   clos: Clo[];
+  weeks?: number | null;
   entry?: LearningPlanEntry;
   title: string;
   submitLabel: string;
@@ -41,16 +44,11 @@ export function EntryForm({
       className={`grid gap-3 rounded-md border border-neutral-200 p-4 sm:grid-cols-4 dark:border-neutral-800 ${className}`}
     >
       <h3 className="text-sm font-medium sm:col-span-4">{title}</h3>
-      <label className="text-sm">
-        Week label
-        <input
-          name="weekLabel"
-          required
-          placeholder="1-4"
-          defaultValue={entry?.weekLabel}
-          className={field}
-        />
-      </label>
+      <WeekField
+        weeks={weeks}
+        defaultValue={entry?.weekLabel}
+        className={field.replace("mt-1 ", "")}
+      />
       <label className="text-sm sm:col-span-3">
         Topics
         <input

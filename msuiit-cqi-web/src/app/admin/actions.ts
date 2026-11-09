@@ -182,12 +182,13 @@ export async function updateProgramIdentity(programId: string, formData: FormDat
 }
 
 export async function createCohort(programId: string, formData: FormData) {
-  const code = str(formData, 'code');
   const startYear = optInt(formData, 'startYear');
   const endYear = optInt(formData, 'endYear');
+  // The code is generated from the years (e.g. "2022-2026").
+  const code = str(formData, 'code') || `${startYear}-${endYear}`;
   const description = str(formData, 'description');
 
-  await apiFetch('/cohorts', {
+  const cohort = await apiFetch<{ id: string }>('/cohorts', {
     method: 'POST',
     body: JSON.stringify({
       programId,
@@ -198,8 +199,36 @@ export async function createCohort(programId: string, formData: FormData) {
     }),
   });
 
+  // Optional student list (Excel / CSV) to initialize the cohort's students.
+  const file = formData.get('studentList');
+  let importQuery = '';
+  if (file instanceof File && file.size > 0) {
+    const apiForm = new FormData();
+    apiForm.set('file', file);
+    try {
+      const r = await apiFetch<{
+        created: number;
+        assignedExisting: number;
+        alreadyInCohort: number;
+        skippedOtherCohort: string[];
+        skippedOtherProgram: string[];
+        invalidRows: number;
+      }>(`/cohorts/${cohort.id}/students/upload`, {
+        method: 'POST',
+        body: apiForm,
+      });
+      const skipped = r.skippedOtherCohort.length + r.skippedOtherProgram.length;
+      importQuery = `?cohort=${encodeURIComponent(code)}&created=${r.created}&assigned=${r.assignedExisting}&existing=${r.alreadyInCohort}&skipped=${skipped}&invalid=${r.invalidRows}`;
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Upload failed.';
+      importQuery = `?cohort=${encodeURIComponent(code)}&importError=${encodeURIComponent(message)}`;
+    }
+  }
+
   revalidatePath(`/admin/programs/${programId}`, 'layout');
   revalidatePath(`/programs/${programId}`);
+  revalidatePath(`/programs/${programId}/students`);
+  if (importQuery) redirect(`/admin/programs/${programId}/settings/cohorts${importQuery}`);
 }
 
 export async function updateCohort(
@@ -447,6 +476,7 @@ export async function createAndLinkCourse(programId: string, formData: FormData)
       title,
       description: description || undefined,
       credits: optInt(formData, 'credits'),
+      weeks: optInt(formData, 'weeks'),
     }),
   });
 
@@ -801,10 +831,12 @@ export async function updateCourseDetails(
       credits: optInt(formData, 'credits'),
       lectureHours: optInt(formData, 'lectureHours'),
       labHours: optInt(formData, 'labHours'),
+      weeks: optInt(formData, 'weeks'),
       prerequisites: prerequisites || undefined,
     }),
   });
 
+  revalidatePath(`/programs/${programId}/courses/${courseId}`);
   revalidatePath(`/admin/programs/${programId}/courses/${courseId}`);
   revalidatePath(`/admin/programs/${programId}`, 'layout');
 }
@@ -1182,23 +1214,25 @@ export async function updateSyllabusInfo(
   if (redirectTo.startsWith('/programs/')) redirect(redirectTo);
 }
 
-// Duplicates a syllabus (learning plan, references, policies) as a new row in
-// the same term, then returns to the list with that row open for editing.
-export async function copySyllabus(
+// Creates the syllabus copy only when the draft row is saved (Copy itself
+// persists nothing), so cancelling leaves no trace.
+export async function saveSyllabusCopy(
   programId: string,
   courseId: string,
   sourceOfferingId: string,
+  formData: FormData,
 ) {
-  const source = await apiFetch<{
-    academicTermId: string;
-    section: string | null;
-  }>(`/course-offerings/${sourceOfferingId}`);
-  const formData = new FormData();
-  formData.set('academicTermId', source.academicTermId);
-  // A section can only be used once per term, so mark the copy.
-  if (source.section) formData.set('section', `${source.section} (copy)`);
   formData.set('copyLearningPlanFromOfferingId', sourceOfferingId);
-  const newId = await createOfferingWithCopy(courseId, formData);
+  try {
+    await createOfferingWithCopy(courseId, formData);
+  } catch (err) {
+    // Most likely the term + section already exists; reopen the draft.
+    if (err instanceof ApiError) {
+      redirect(`/programs/${programId}/courses/${courseId}?copy=${sourceOfferingId}&copyError=1`);
+    }
+    throw err;
+  }
   revalidateCoursePaths(programId, courseId);
-  if (newId) redirect(`/programs/${programId}/courses/${courseId}?editing=${newId}`);
+  redirect(`/programs/${programId}/courses/${courseId}`);
 }
+

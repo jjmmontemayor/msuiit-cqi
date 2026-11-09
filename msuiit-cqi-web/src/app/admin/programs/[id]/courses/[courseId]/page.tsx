@@ -173,6 +173,17 @@ export default async function AdminCourseClosPage({
             />
           </label>
           <label className="text-sm">
+            Number of weeks
+            <input
+              name="weeks"
+              type="number"
+              min={1}
+              max={52}
+              defaultValue={course.weeks ?? ""}
+              className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            />
+          </label>
+          <label className="text-sm">
             Prerequisites
             <select
               name="prerequisites"

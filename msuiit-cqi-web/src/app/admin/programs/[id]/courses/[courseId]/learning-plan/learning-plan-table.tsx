@@ -18,6 +18,7 @@ export function LearningPlanTable({
   entries,
   tasks,
   clos,
+  weeks,
 }: {
   programId: string;
   courseId: string;
@@ -25,6 +26,7 @@ export function LearningPlanTable({
   entries: LearningPlanEntry[];
   tasks: AssessmentTask[];
   clos: Clo[];
+  weeks?: number | null;
 }) {
   const [rows, setRows] = useState(entries);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -82,6 +84,7 @@ export function LearningPlanTable({
                       entry.id,
                     )}
                     clos={clos}
+                    weeks={weeks}
                     entry={entry}
                     title={`Edit ${entry.weekLabel}`}
                     submitLabel="Save"

@@ -7,11 +7,13 @@ export function AddEntryForm({
   courseId,
   offeringId,
   clos,
+  weeks,
 }: {
   programId: string;
   courseId: string;
   offeringId: string;
   clos: Clo[];
+  weeks?: number | null;
 }) {
   return (
     <div>
@@ -24,6 +26,7 @@ export function AddEntryForm({
           offeringId,
         )}
         clos={clos}
+        weeks={weeks}
         title="Add week entry"
         submitLabel="Add Entry"
       />

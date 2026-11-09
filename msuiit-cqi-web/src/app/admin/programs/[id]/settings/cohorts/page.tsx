@@ -10,6 +10,7 @@ import {
 } from "@/lib/api";
 import { createCohort } from "../../../../actions";
 import { BatchRow } from "../../batch-row";
+import { CohortYearFields } from "../../cohort-year-fields";
 
 export const dynamic = "force-dynamic";
 
@@ -29,10 +30,21 @@ const inputClass =
 
 export default async function CohortsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{
+    cohort?: string;
+    created?: string;
+    assigned?: string;
+    existing?: string;
+    skipped?: string;
+    invalid?: string;
+    importError?: string;
+  }>;
 }) {
   const { id } = await params;
+  const result = await searchParams;
   const program = await getProgram(id);
 
   const [cohorts, curriculumVersions, faculty, cohortAdvisers] =
@@ -64,44 +76,49 @@ export default async function CohortsPage({
         </p>
       </div>
 
+      {result.importError && (
+        <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+          Cohort {result.cohort} was added, but the student list could not be
+          imported: {result.importError}
+        </p>
+      )}
+      {result.created !== undefined && (
+        <p className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
+          Cohort {result.cohort} added. Students: {result.created} created
+          {Number(result.assigned) > 0 && `, ${result.assigned} existing added`}
+          {Number(result.existing) > 0 && `, ${result.existing} already in the cohort`}
+          {Number(result.skipped) > 0 &&
+            `, ${result.skipped} skipped (already in another cohort or program)`}
+          {Number(result.invalid) > 0 &&
+            `, ${result.invalid} rows ignored (missing number or name)`}
+          .
+        </p>
+      )}
+
       <form
         action={createCohort.bind(null, program.id)}
         className="grid gap-3 rounded-md border border-neutral-200 p-4 sm:grid-cols-4 dark:border-neutral-800"
       >
         <h3 className="text-sm font-medium sm:col-span-4">Add cohort</h3>
-        <label className="text-sm">
-          Code
-          <input
-            name="code"
-            required
-            maxLength={20}
-            placeholder="2022-2026"
-            className={inputClass}
-          />
-        </label>
-        <label className="text-sm">
-          Start year
-          <input
-            name="startYear"
-            type="number"
-            required
-            placeholder="2022"
-            className={inputClass}
-          />
-        </label>
-        <label className="text-sm">
-          End year
-          <input
-            name="endYear"
-            type="number"
-            required
-            placeholder="2026"
-            className={inputClass}
-          />
-        </label>
+        <CohortYearFields />
         <label className="text-sm">
           Description
           <input name="description" className={inputClass} />
+        </label>
+        <label className="text-sm sm:col-span-4">
+          Student list (optional, .xlsx / .xls / .csv)
+          <input
+            name="studentList"
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            className="mt-1 block w-full text-sm file:mr-3 file:rounded-md file:border file:border-neutral-300 file:bg-neutral-50 file:px-3 file:py-1.5 file:text-sm hover:file:bg-neutral-100 dark:file:border-neutral-700 dark:file:bg-neutral-900"
+          />
+          <span className="mt-1 block text-xs text-neutral-500">
+            Needs a student number column and either a Name column
+            (&ldquo;LASTNAME, Firstname&rdquo;) or separate Last name and First
+            name columns. Students already in the system are not moved out of
+            another cohort.
+          </span>
         </label>
         <div className="sm:col-span-4">
           <button

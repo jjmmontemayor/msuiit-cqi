@@ -8,9 +8,17 @@ import {
   type Clo,
   type Course,
   type CourseOffering,
+  type CurriculumCourse,
+  type CurriculumVersion,
   type LearningPlanEntry,
   type Program,
 } from "@/lib/api";
+import {
+  CheckIcon,
+  iconLinkClass,
+  PencilIcon,
+} from "@/components/icon-buttons";
+import { CourseInfo } from "./course-info";
 import {
   AddSyllabus,
   PlanLibrary,
@@ -55,23 +63,48 @@ export default async function CourseDetailsPage({
   searchParams: Promise<{
     offeringId?: string;
     edit?: string;
-    editing?: string;
+    copy?: string;
+    copyError?: string;
+    curriculumVersionId?: string;
+    editCourse?: string;
   }>;
 }) {
   const { id, courseId } = await params;
   const {
     offeringId: offeringIdParam,
     edit,
-    editing: editingId,
+    copy: copySourceId,
+    copyError,
+    curriculumVersionId: versionIdParam,
+    editCourse,
   } = await searchParams;
-  const [program, course, allOfferings, academicTerms] = await Promise.all([
+  const [
+    program,
+    course,
+    allOfferings,
+    academicTerms,
+    curriculumVersions,
+    curriculumCourses,
+  ] = await Promise.all([
     getProgram(id),
     getCourse(courseId),
     apiFetch<CourseOffering[]>(
       `/course-offerings?courseId=${courseId}&archived=include`,
     ),
     apiFetch<AcademicTerm[]>("/academic-terms"),
+    apiFetch<CurriculumVersion[]>(`/curriculum-versions?programId=${id}`),
+    apiFetch<CurriculumCourse[]>(`/curriculum-courses?programId=${id}`),
   ]);
+  const selectedVersionId = versionIdParam || curriculumVersions[0]?.id;
+  const versionClos = selectedVersionId
+    ? await apiFetch<Clo[]>(
+        `/clos?courseId=${courseId}&curriculumVersionId=${selectedVersionId}`,
+      )
+    : [];
+  const otherCourses = curriculumCourses
+    .map((cc) => cc.course)
+    .filter((c) => c.id !== course.id)
+    .sort((a, b) => a.code.localeCompare(b.code));
   const offerings = sortNewestFirst(allOfferings);
   // The newest plan that hasn't been archived is the current one.
   const currentOfferingId = offerings.find((o) => !o.archivedAt)?.id;
@@ -107,6 +140,12 @@ export default async function CourseDetailsPage({
       ).tasks
     : [];
 
+  const editingCourse = editCourse === "1";
+  // Back to the page as it is now, minus the course-edit switch.
+  const courseUrl = `/programs/${program.id}/courses/${course.id}${
+    versionIdParam ? `?curriculumVersionId=${versionIdParam}` : ""
+  }`;
+
   return (
     <div className="space-y-8">
       <div>
@@ -116,58 +155,43 @@ export default async function CourseDetailsPage({
         >
           &larr; {program.code}
         </Link>
-        <div className="mt-1 flex items-start gap-2">
+        <div className="mt-1 flex items-center gap-2">
           <h1 className="text-2xl font-semibold">
             {course.code} — {course.title}
           </h1>
+          <Link
+            href={editingCourse ? courseUrl : `${courseUrl}${courseUrl.includes("?") ? "&" : "?"}editCourse=1`}
+            title={editingCourse ? "Done editing course" : "Edit course description and details"}
+            aria-label={editingCourse ? "Done editing course" : "Edit course description and details"}
+            className={iconLinkClass}
+          >
+            {editingCourse ? <CheckIcon /> : <PencilIcon />}
+          </Link>
         </div>
-        {course.description && (
+        {!editingCourse && course.description && (
           <p className="mt-1 text-neutral-600 dark:text-neutral-400">
             {course.description}
           </p>
         )}
       </div>
 
-      <section>
-        <h2 className="text-lg font-medium">Course Details</h2>
-        <dl className="mt-3 grid grid-cols-2 gap-4 rounded-md border border-neutral-200 p-4 text-sm sm:grid-cols-4 dark:border-neutral-800">
-          <div>
-            <dt className="text-neutral-500">Credits</dt>
-            <dd className="mt-0.5">{course.credits ?? "—"}</dd>
-          </div>
-          <div>
-            <dt className="text-neutral-500">Lecture hours / week</dt>
-            <dd className="mt-0.5">{course.lectureHours ?? "—"}</dd>
-          </div>
-          <div>
-            <dt className="text-neutral-500">Lab hours / week</dt>
-            <dd className="mt-0.5">{course.labHours ?? "—"}</dd>
-          </div>
-          <div>
-            <dt className="text-neutral-500">Prerequisites</dt>
-            <dd className="mt-0.5">{course.prerequisites ?? "—"}</dd>
-          </div>
-        </dl>
-      </section>
+      <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-800 dark:bg-neutral-900/40">
+        <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+          Course
+        </p>
+        <CourseInfo
+          programId={program.id}
+          course={course}
+          otherCourses={otherCourses}
+          curriculumVersions={curriculumVersions}
+          selectedVersionId={selectedVersionId}
+          clos={versionClos}
+          editing={editingCourse}
+          doneHref={courseUrl}
+        />
+      </div>
 
-      <section>
-        <h2 className="text-lg font-medium">Course Learning Outcomes</h2>
-        {course.clos.length === 0 ? (
-          <p className="mt-2 text-sm text-neutral-500">No CLOs yet.</p>
-        ) : (
-          <ul className="mt-3 divide-y divide-neutral-200 rounded-md border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
-            {course.clos.map((clo) => (
-              <li key={clo.id} className="px-4 py-2.5 text-sm">
-                <span className="font-medium">{clo.code}</span>
-                <span className="ml-2 text-neutral-600 dark:text-neutral-400">
-                  {clo.description}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
+      <div className="border-t border-neutral-300 pt-8 dark:border-neutral-700">
       {!selectedOffering ? (
         <section>
           <div className="flex flex-wrap items-end justify-between gap-3">
@@ -196,47 +220,33 @@ export default async function CourseDetailsPage({
               offerings={offerings}
               entryCounts={entryCounts}
               currentId={currentOfferingId}
-              editingId={editingId}
+              copySourceId={copySourceId}
+              copyError={copyError === "1"}
               academicTerms={academicTerms}
             />
           )}
         </section>
       ) : (
         // Prototype: the syllabus is editable here without the admin area.
-        <section className="space-y-3">
-          <div className="sticky top-0 z-30 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-sky-200 bg-sky-50/95 px-4 py-3 shadow-sm backdrop-blur dark:border-sky-900 dark:bg-sky-950/80">
+        <section className="space-y-3 bg-sky-50/60 p-4 dark:bg-sky-950/20">
+          <div className="flex items-start justify-between gap-4">
             <Link
               href={`/programs/${program.id}/courses/${course.id}`}
-              className="inline-flex items-center gap-1.5 rounded-md bg-sky-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-700"
+              className="text-sm font-medium text-sky-700 hover:underline dark:text-sky-300"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                className="h-4 w-4"
-                aria-hidden
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M17 10a.75.75 0 0 1-.75.75H5.612l4.158 3.96a.75.75 0 1 1-1.04 1.08l-5.5-5.25a.75.75 0 0 1 0-1.08l5.5-5.25a.75.75 0 1 1 1.04 1.08L5.612 9.25H16.25A.75.75 0 0 1 17 10Z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              All syllabi
+              &larr; All syllabi
             </Link>
-            <div className="min-w-0">
-              <div className="text-xs font-medium uppercase tracking-wide text-sky-700 dark:text-sky-300">
-                {edit === "1" ? "Editing syllabus" : "Syllabus"}
-              </div>
-              <div className="text-sm font-medium">
-                {selectedOffering.academicTerm.label}
-                {selectedOffering.section
-                  ? ` — ${selectedOffering.section}`
-                  : ""}
-                {selectedOffering.instructorName
-                  ? ` (${selectedOffering.instructorName})`
-                  : ""}
-              </div>
+            <div className="text-right">
+            <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+              {edit === "1" ? "Editing syllabus" : "Syllabus"}
+            </div>
+            <div className="text-base font-medium">
+              {selectedOffering.academicTerm.label}
+              {selectedOffering.section ? ` — ${selectedOffering.section}` : ""}
+              {selectedOffering.instructorName
+                ? ` (${selectedOffering.instructorName})`
+                : ""}
+            </div>
             </div>
           </div>
 
@@ -263,6 +273,7 @@ export default async function CourseDetailsPage({
               entries={learningPlanEntries}
               tasks={tasks}
               clos={course.clos}
+              weeks={course.weeks}
             />
           )}
           <AddEntryForm
@@ -270,6 +281,7 @@ export default async function CourseDetailsPage({
             courseId={course.id}
             offeringId={selectedOffering.id}
             clos={course.clos}
+            weeks={course.weeks}
           />
           <SyllabusPanel
             programId={program.id}
@@ -278,7 +290,7 @@ export default async function CourseDetailsPage({
           />
         </section>
       )}
-
+      </div>
     </div>
   );
 }

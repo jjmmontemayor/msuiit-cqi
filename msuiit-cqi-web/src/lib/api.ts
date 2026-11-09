@@ -60,6 +60,7 @@ export interface Course {
   credits: number | null;
   lectureHours: number | null;
   labHours: number | null;
+  weeks: number | null;
   prerequisites: string | null;
 }
 

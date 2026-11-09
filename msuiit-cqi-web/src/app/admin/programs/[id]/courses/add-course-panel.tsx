@@ -83,7 +83,7 @@ export function AddCoursePanel({
               <input name="title" required maxLength={255} className={input} />
             </label>
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             <label className="text-sm">
               Units
               <input
@@ -91,6 +91,17 @@ export function AddCoursePanel({
                 type="number"
                 min={0}
                 defaultValue={3}
+                className={input}
+              />
+            </label>
+            <label className="text-sm">
+              Weeks
+              <input
+                name="weeks"
+                type="number"
+                min={1}
+                max={52}
+                defaultValue={18}
                 className={input}
               />
             </label>

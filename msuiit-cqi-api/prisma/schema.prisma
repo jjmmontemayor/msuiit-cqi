@@ -61,6 +61,8 @@ model Course {
   credits       Int?
   lectureHours  Int?     @map("lecture_hours")
   labHours      Int?     @map("lab_hours")
+  // Number of teaching weeks; drives the week choices in a syllabus learning plan.
+  weeks         Int?
   prerequisites String?
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")

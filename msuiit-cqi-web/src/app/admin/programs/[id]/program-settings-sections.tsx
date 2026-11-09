@@ -20,6 +20,7 @@ import {
 } from "../../actions";
 import { EditableSection } from "@/components/editable-section";
 import { BatchRow } from "./batch-row";
+import { CohortYearFields } from "./cohort-year-fields";
 import { DeleteButton } from "@/components/icon-buttons";
 
 // Program Settings content (identity, batches, curriculum versions, mapping
@@ -204,36 +205,7 @@ export async function ProgramSettingsSections({
           action={boundCreateCohort}
           className="mt-3 grid gap-3 rounded-md border border-neutral-200 p-4 sm:grid-cols-4 dark:border-neutral-800"
         >
-          <label className="text-sm">
-            Code
-            <input
-              name="code"
-              required
-              maxLength={20}
-              placeholder="2022-2025"
-              className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-            />
-          </label>
-          <label className="text-sm">
-            Start year
-            <input
-              name="startYear"
-              type="number"
-              required
-              placeholder="2022"
-              className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-            />
-          </label>
-          <label className="text-sm">
-            End year
-            <input
-              name="endYear"
-              type="number"
-              required
-              placeholder="2025"
-              className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-            />
-          </label>
+          <CohortYearFields />
           <label className="text-sm">
             Description
             <input

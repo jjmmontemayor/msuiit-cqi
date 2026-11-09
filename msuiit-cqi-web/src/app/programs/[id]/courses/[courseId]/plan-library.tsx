@@ -8,7 +8,7 @@ import {
 import type { AcademicTerm, CourseOffering } from "@/lib/api";
 import {
   addSyllabus,
-  copySyllabus,
+  saveSyllabusCopy,
   updateSyllabusInfo,
 } from "@/app/admin/actions";
 
@@ -102,14 +102,16 @@ export function AddSyllabus({
 }
 
 // Every syllabus for the course, current and previous. Each one carries its
-// own learning plan; Copy starts a new syllabus from it for the next instructor.
+// own learning plan. Copy opens a draft row at the top; nothing is created
+// until that row is saved, so cancelling leaves no trace.
 export function PlanLibrary({
   programId,
   courseId,
   offerings,
   entryCounts,
   currentId,
-  editingId,
+  copySourceId,
+  copyError,
   academicTerms,
 }: {
   programId: string;
@@ -117,121 +119,132 @@ export function PlanLibrary({
   offerings: CourseOffering[];
   entryCounts: Record<string, number>;
   currentId: string | undefined;
-  editingId: string | undefined;
+  copySourceId: string | undefined;
+  copyError: boolean;
   academicTerms: AcademicTerm[];
 }) {
+  const listUrl = `/programs/${programId}/courses/${courseId}`;
+  const copySource = offerings.find((o) => o.id === copySourceId);
+
   return (
-    <div className="mt-3 overflow-x-auto rounded-md border border-neutral-200 dark:border-neutral-800">
-      <table className="min-w-full text-sm">
-        <thead className="bg-neutral-100 dark:bg-neutral-900">
-          <tr>
-            <th className="px-3 py-2 text-left">Academic term</th>
-            <th className="px-3 py-2 text-left">Section</th>
-            <th className="px-3 py-2 text-left">Instructor</th>
-            <th className="px-3 py-2 text-right">Weeks</th>
-            <th className="px-3 py-2 text-left">Status</th>
-            <th className="px-3 py-2" />
-          </tr>
-        </thead>
-        <tbody>
-          {offerings.map((o) => {
-            const status = o.archivedAt
-              ? "Archived"
-              : o.id === currentId
-                ? "Current"
-                : "Previous";
-            const editing = o.id === editingId;
-            const listUrl = `/programs/${programId}/courses/${courseId}`;
-            const formId = `edit-syllabus-${o.id}`;
-            return (
-              <tr
-                key={o.id}
-                className={`border-t border-neutral-200 align-top dark:border-neutral-800 ${
-                  editing ? "bg-amber-50 dark:bg-amber-950/20" : ""
-                }`}
-              >
-                {editing ? (
-                  <>
-                    <td className="px-3 py-2">
-                      <select
-                        form={formId}
-                        name="academicTermId"
-                        required
-                        defaultValue={o.academicTermId}
-                        className={cellField}
-                      >
-                        {academicTerms.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.label}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-3 py-2">
-                      <input
-                        form={formId}
-                        name="section"
-                        maxLength={20}
-                        defaultValue={o.section ?? ""}
-                        className={cellField}
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input
-                        form={formId}
-                        name="instructorName"
-                        maxLength={255}
-                        defaultValue={o.instructorName ?? ""}
-                        placeholder="Instructor"
-                        autoFocus
-                        className={cellField}
-                      />
-                    </td>
-                  </>
-                ) : (
-                  <>
-                    <td className="whitespace-nowrap px-3 py-2 font-medium">
-                      {o.academicTerm.label}
-                    </td>
-                    <td className="px-3 py-2">{o.section ?? "—"}</td>
-                    <td className="px-3 py-2">{o.instructorName ?? "—"}</td>
-                  </>
-                )}
-                <td className="px-3 py-2 text-right">
-                  {entryCounts[o.id] ?? 0}
+    <div className="mt-3 space-y-2">
+      {copySource && copyError && (
+        <p className="rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+          Could not create the copy. A syllabus for that term and section may
+          already exist &mdash; change the term or section and save again.
+        </p>
+      )}
+      <div className="overflow-x-auto rounded-md border border-neutral-200 dark:border-neutral-800">
+        <table className="min-w-full text-sm">
+          <thead className="bg-neutral-100 dark:bg-neutral-900">
+            <tr>
+              <th className="px-3 py-2 text-left">Academic term</th>
+              <th className="px-3 py-2 text-left">Section</th>
+              <th className="px-3 py-2 text-left">Instructor</th>
+              <th className="px-3 py-2 text-right">Weeks</th>
+              <th className="px-3 py-2 text-left">Status</th>
+              <th className="px-3 py-2" />
+            </tr>
+          </thead>
+          <tbody>
+            {copySource && (
+              <tr className="border-t border-neutral-200 bg-amber-50 align-top dark:border-neutral-800 dark:bg-amber-950/20">
+                <td className="px-3 py-2">
+                  <select
+                    form="copy-draft"
+                    name="academicTermId"
+                    required
+                    defaultValue={copySource.academicTermId}
+                    className={cellField}
+                  >
+                    {academicTerms.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
                 </td>
                 <td className="px-3 py-2">
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                      status === "Current"
-                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
-                        : "bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
-                    }`}
-                  >
-                    {status}
+                  <input
+                    form="copy-draft"
+                    name="section"
+                    maxLength={20}
+                    defaultValue={
+                      copySource.section ? `${copySource.section} (copy)` : ""
+                    }
+                    className={cellField}
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  <input
+                    form="copy-draft"
+                    name="instructorName"
+                    maxLength={255}
+                    placeholder="Instructor"
+                    autoFocus
+                    className={cellField}
+                  />
+                </td>
+                <td className="px-3 py-2 text-right">
+                  {entryCounts[copySource.id] ?? 0}
+                </td>
+                <td className="px-3 py-2">
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                    New copy
                   </span>
                 </td>
                 <td className="px-3 py-2">
-                  {editing ? (
-                    <form
-                      id={formId}
-                      action={updateSyllabusInfo.bind(
-                        null,
-                        programId,
-                        courseId,
-                        o.id,
-                      )}
-                      className="flex items-start justify-end gap-2"
+                  <form
+                    id="copy-draft"
+                    action={saveSyllabusCopy.bind(
+                      null,
+                      programId,
+                      courseId,
+                      copySource.id,
+                    )}
+                    className="flex items-start justify-end gap-2"
+                  >
+                    <button type="submit" className={primaryButton}>
+                      Save
+                    </button>
+                    <Link href={listUrl} className={smallButton}>
+                      Cancel
+                    </Link>
+                  </form>
+                </td>
+              </tr>
+            )}
+            {offerings.map((o) => {
+              const status = o.archivedAt
+                ? "Archived"
+                : o.id === currentId
+                  ? "Current"
+                  : "Previous";
+              return (
+                <tr
+                  key={o.id}
+                  className="border-t border-neutral-200 align-top dark:border-neutral-800"
+                >
+                  <td className="whitespace-nowrap px-3 py-2 font-medium">
+                    {o.academicTerm.label}
+                  </td>
+                  <td className="px-3 py-2">{o.section ?? "—"}</td>
+                  <td className="px-3 py-2">{o.instructorName ?? "—"}</td>
+                  <td className="px-3 py-2 text-right">
+                    {entryCounts[o.id] ?? 0}
+                  </td>
+                  <td className="px-3 py-2">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                        status === "Current"
+                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
+                          : "bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
+                      }`}
                     >
-                      <input type="hidden" name="redirectTo" value={listUrl} />
-                      <button type="submit" className={primaryButton}>
-                        Save
-                      </button>
-                      <Link href={listUrl} className={smallButton}>
-                        Cancel
-                      </Link>
-                    </form>
-                  ) : (
+                      {status}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2">
                     <div className="flex items-center justify-end gap-1">
                       <Link
                         href={`${listUrl}?offeringId=${o.id}`}
@@ -241,23 +254,14 @@ export function PlanLibrary({
                       >
                         <EyeIcon />
                       </Link>
-                      <form
-                        action={copySyllabus.bind(
-                          null,
-                          programId,
-                          courseId,
-                          o.id,
-                        )}
+                      <Link
+                        href={`${listUrl}?copy=${o.id}`}
+                        title="Copy as a new syllabus"
+                        aria-label="Copy syllabus"
+                        className={iconLinkClass}
                       >
-                        <button
-                          type="submit"
-                          title="Copy as a new syllabus"
-                          aria-label="Copy syllabus"
-                          className={iconLinkClass}
-                        >
-                          <CopyIcon />
-                        </button>
-                      </form>
+                        <CopyIcon />
+                      </Link>
                       <Link
                         href={`${listUrl}?offeringId=${o.id}&edit=1`}
                         title="Edit"
@@ -267,13 +271,13 @@ export function PlanLibrary({
                         <PencilIcon />
                       </Link>
                     </div>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
