@@ -521,7 +521,39 @@ function revalidateLearningPlan(programId: string, courseId: string) {
   revalidatePath(`/admin/programs/${programId}/courses/${courseId}/learning-plan`);
 }
 
+// "A.Y. and semester" is picked as two dropdowns and stored as one text,
+// e.g. "2025 - 2026, First Semester" (the same shape as the default).
+function composeSyllabusTerm(formData: FormData): string | null {
+  const ay = str(formData, 'syllabusAy');
+  const semester = str(formData, 'syllabusSemester');
+  if (!ay && !semester) return null;
+  return [ay, semester].filter(Boolean).join(', ');
+}
+
 export async function updateOfferingSyllabusDetails(
+  programId: string,
+  courseId: string,
+  offeringId: string,
+  formData: FormData,
+) {
+  // Course code, title, credits, description and prerequisites are not set
+  // here: the syllabus always takes them from the course record.
+  await apiFetch(`/course-offerings/${offeringId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      modality: str(formData, 'modality') || null,
+      population: optInt(formData, 'population') ?? null,
+      courseworkWeight: optInt(formData, 'courseworkWeight') ?? 30,
+      classroomPolicies: str(formData, 'classroomPolicies') || null,
+      syllabusTerm: composeSyllabusTerm(formData),
+      blueprintNote: str(formData, 'blueprintNote') || null,
+      gradingNote: str(formData, 'gradingNote') || null,
+    }),
+  });
+  revalidateLearningPlan(programId, courseId);
+}
+
+export async function updateOfferingSignatories(
   programId: string,
   courseId: string,
   offeringId: string,
@@ -530,22 +562,26 @@ export async function updateOfferingSyllabusDetails(
   await apiFetch(`/course-offerings/${offeringId}`, {
     method: 'PATCH',
     body: JSON.stringify({
-      modality: str(formData, 'modality') || null,
-      population: optInt(formData, 'population') ?? null,
-      courseworkWeight: optInt(formData, 'courseworkWeight') ?? 30,
-      references: str(formData, 'references') || null,
-      classroomPolicies: str(formData, 'classroomPolicies') || null,
       preparedBy: str(formData, 'preparedBy') || null,
       reviewedBy: str(formData, 'reviewedBy') || null,
       approvedBy: str(formData, 'approvedBy') || null,
-      syllabusCode: str(formData, 'syllabusCode') || null,
-      syllabusTitle: str(formData, 'syllabusTitle') || null,
-      syllabusDescription: str(formData, 'syllabusDescription') || null,
-      syllabusCredits: optInt(formData, 'syllabusCredits') ?? null,
-      syllabusPrerequisites: str(formData, 'syllabusPrerequisites') || null,
-      syllabusTerm: str(formData, 'syllabusTerm') || null,
-      blueprintNote: str(formData, 'blueprintNote') || null,
-      gradingNote: str(formData, 'gradingNote') || null,
+    }),
+  });
+  revalidateLearningPlan(programId, courseId);
+}
+
+// References are stored one per line.
+export async function saveOfferingReferences(
+  programId: string,
+  courseId: string,
+  offeringId: string,
+  references: string[],
+) {
+  const cleaned = references.map((r) => r.trim()).filter(Boolean);
+  await apiFetch(`/course-offerings/${offeringId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      references: cleaned.length > 0 ? cleaned.join(String.fromCharCode(10)) : null,
     }),
   });
   revalidateLearningPlan(programId, courseId);
@@ -773,13 +809,14 @@ export async function updateCourseDetails(
   revalidatePath(`/admin/programs/${programId}`, 'layout');
 }
 
-export async function createCourseOffering(
-  programId: string,
+// Creates the offering and, when asked, copies a learning plan (and the
+// reusable syllabus details) from another offering. Returns the new id.
+async function createOfferingWithCopy(
   courseId: string,
   formData: FormData,
-) {
+): Promise<string | null> {
   const academicTermId = str(formData, 'academicTermId');
-  if (!academicTermId) return;
+  if (!academicTermId) return null;
 
   const offering = await apiFetch<{ id: string }>('/course-offerings', {
     method: 'POST',
@@ -824,9 +861,48 @@ export async function createCourseOffering(
         }),
       ),
     );
+
+    const source = await apiFetch<{
+      modality: string | null;
+      references: string | null;
+      classroomPolicies: string | null;
+      courseworkWeight: number;
+    }>(`/course-offerings/${copyFromOfferingId}`);
+    await apiFetch(`/course-offerings/${offering.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        modality: source.modality,
+        references: source.references,
+        classroomPolicies: source.classroomPolicies,
+        courseworkWeight: source.courseworkWeight,
+      }),
+    });
   }
 
+  return offering.id;
+}
+
+export async function createCourseOffering(
+  programId: string,
+  courseId: string,
+  formData: FormData,
+) {
+  await createOfferingWithCopy(courseId, formData);
   revalidateCoursePaths(programId, courseId);
+}
+
+// Starts a new learning plan for the next instructor from an existing one,
+// then opens it on the public course page.
+export async function reuseLearningPlan(
+  programId: string,
+  courseId: string,
+  sourceOfferingId: string,
+  formData: FormData,
+) {
+  formData.set('copyLearningPlanFromOfferingId', sourceOfferingId);
+  const newId = await createOfferingWithCopy(courseId, formData);
+  revalidateCoursePaths(programId, courseId);
+  if (newId) redirect(`/programs/${programId}/courses/${courseId}?offeringId=${newId}`);
 }
 
 export async function createLearningPlanEntry(
@@ -1043,4 +1119,86 @@ export async function uploadAttainmentSheet(
   } catch (err) {
     return { error: err instanceof ApiError ? err.message : 'Upload failed.' };
   }
+}
+
+export async function updateLearningPlanEntry(
+  programId: string,
+  courseId: string,
+  entryId: string,
+  formData: FormData,
+) {
+  const weekLabel = str(formData, 'weekLabel');
+  const topics = str(formData, 'topics');
+  if (!weekLabel || !topics) return;
+
+  const cloLabels = formData.getAll('cloLabels').map(String).filter(Boolean);
+
+  // Cleared optional fields go to null so they are removed, not left stale.
+  await apiFetch(`/learning-plan-entries/${entryId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      weekLabel,
+      topics,
+      lessonOutcome: str(formData, 'lessonOutcome') || null,
+      coLabels: cloLabels.length > 0 ? cloLabels.join(',') : null,
+      methodology: str(formData, 'methodology') || null,
+      learningResources: str(formData, 'learningResources') || null,
+    }),
+  });
+
+  revalidateCoursePaths(programId, courseId);
+}
+
+// Adds a syllabus (one learning plan, assessments and details for a term and
+// instructor) and opens it on the public course page.
+export async function addSyllabus(
+  programId: string,
+  courseId: string,
+  formData: FormData,
+) {
+  const newId = await createOfferingWithCopy(courseId, formData);
+  revalidateCoursePaths(programId, courseId);
+  if (newId) redirect(`/programs/${programId}/courses/${courseId}?offeringId=${newId}`);
+}
+
+export async function updateSyllabusInfo(
+  programId: string,
+  courseId: string,
+  offeringId: string,
+  formData: FormData,
+) {
+  const academicTermId = str(formData, 'academicTermId');
+  if (!academicTermId) return;
+  await apiFetch(`/course-offerings/${offeringId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      academicTermId,
+      section: str(formData, 'section') || null,
+      instructorName: str(formData, 'instructorName') || null,
+    }),
+  });
+  revalidateCoursePaths(programId, courseId);
+  const redirectTo = str(formData, 'redirectTo');
+  if (redirectTo.startsWith('/programs/')) redirect(redirectTo);
+}
+
+// Duplicates a syllabus (learning plan, references, policies) as a new row in
+// the same term, then returns to the list with that row open for editing.
+export async function copySyllabus(
+  programId: string,
+  courseId: string,
+  sourceOfferingId: string,
+) {
+  const source = await apiFetch<{
+    academicTermId: string;
+    section: string | null;
+  }>(`/course-offerings/${sourceOfferingId}`);
+  const formData = new FormData();
+  formData.set('academicTermId', source.academicTermId);
+  // A section can only be used once per term, so mark the copy.
+  if (source.section) formData.set('section', `${source.section} (copy)`);
+  formData.set('copyLearningPlanFromOfferingId', sourceOfferingId);
+  const newId = await createOfferingWithCopy(courseId, formData);
+  revalidateCoursePaths(programId, courseId);
+  if (newId) redirect(`/programs/${programId}/courses/${courseId}?editing=${newId}`);
 }

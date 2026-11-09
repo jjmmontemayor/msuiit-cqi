@@ -1,5 +1,6 @@
 import {
   apiFetch,
+  type AcademicTerm,
   type CourseOffering,
   type OfferingBlueprint,
 } from "@/lib/api";
@@ -9,12 +10,14 @@ import {
   resetGradeScale,
   saveGradeScale,
   saveOfferingClo,
-  setOfferingAlignment,
   setAssessmentClo,
   updateAssessmentTask,
+  updateOfferingSignatories,
   updateOfferingSyllabusDetails,
 } from "../../../../../actions";
 import { AutoSubmitInput } from "@/components/auto-submit-input";
+import { TaxonomyPicker } from "./taxonomy-picker";
+import { ReferencesList } from "./references-list";
 import { AutoSubmitTextarea } from "@/components/auto-submit-textarea";
 import { AutoSubmitSelect } from "@/components/auto-submit-select";
 import { DeleteButton } from "@/components/icon-buttons";
@@ -23,6 +26,19 @@ const input =
   "mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900";
 const cellInput =
   "w-full rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900";
+const SEMESTER_OPTIONS = ["First Semester", "Second Semester", "Summer"];
+const MODALITIES = [
+  "Face-to-Face",
+  "Blended Learning",
+  "Fully Online",
+  "Hybrid",
+];
+const SEMESTER_NAMES = {
+  FIRST: "First Semester",
+  SECOND: "Second Semester",
+  SUMMER: "Summer",
+} as const;
+
 const exportLink =
   "rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-900";
 
@@ -39,6 +55,31 @@ export async function SyllabusPanel({
   const blueprint = await apiFetch<OfferingBlueprint>(
     `/course-offerings/${offering.id}/blueprint`,
   );
+  const references = (offering.references ?? "")
+    .split(/\r?\n/)
+    .map((r) => r.trim())
+    .filter(Boolean);
+  const academicTerms = await apiFetch<AcademicTerm[]>("/academic-terms");
+  // A.Y. / semester start from what was saved for this syllabus, else from
+  // the syllabus's own academic term.
+  const saved = /^(\d{4}\s*-\s*\d{4})\s*,\s*(.+)$/.exec(
+    offering.syllabusTerm ?? "",
+  );
+  const ownAy = `${offering.academicTerm.schoolYearStart} - ${offering.academicTerm.schoolYearEnd}`;
+  const currentAy = saved?.[1] ?? ownAy;
+  const currentSemester =
+    saved?.[2] ?? SEMESTER_NAMES[offering.academicTerm.semester];
+  const ayOptions = [
+    ...new Set([
+      ...academicTerms.map((t) => `${t.schoolYearStart} - ${t.schoolYearEnd}`),
+      ownAy,
+      currentAy,
+    ]),
+  ].sort();
+  const modalityOptions =
+    offering.modality && !MODALITIES.includes(offering.modality)
+      ? [...MODALITIES, offering.modality]
+      : MODALITIES;
   const base = `/admin/programs/${programId}/courses/${courseId}/learning-plan/export?offeringId=${offering.id}`;
 
   const cloWeightTotal = blueprint.clos.reduce(
@@ -66,12 +107,6 @@ export async function SyllabusPanel({
           >
             Grading sheet (.xlsx)
           </a>
-          <a
-            href={`${base}&kind=grading-sheet&format=csv`}
-            className={exportLink}
-          >
-            Grading sheet (.csv)
-          </a>
         </div>
       </div>
 
@@ -88,75 +123,80 @@ export async function SyllabusPanel({
           )}
           className="grid gap-3 border-t border-neutral-200 p-3 sm:grid-cols-4 dark:border-neutral-800"
         >
-          <p className="text-xs text-neutral-500 sm:col-span-4">
-            Course information for this syllabus. Leave a field blank to use
-            the course record.
-          </p>
+          <div className="sm:col-span-4">
+            <p className="text-xs text-neutral-500">
+              Course code, title, credits, description and prerequisites come
+              from the course settings and can&apos;t be changed here.
+            </p>
+            <dl className="mt-2 grid gap-x-4 gap-y-2 rounded-md bg-neutral-50 p-3 text-sm sm:grid-cols-4 dark:bg-neutral-900">
+              <div>
+                <dt className="text-xs text-neutral-500">Course code</dt>
+                <dd>{offering.course?.code ?? "—"}</dd>
+              </div>
+              <div className="sm:col-span-2">
+                <dt className="text-xs text-neutral-500">Course title</dt>
+                <dd>{offering.course?.title ?? "—"}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-neutral-500">Credits (units)</dt>
+                <dd>{offering.course?.credits ?? "—"}</dd>
+              </div>
+              <div className="sm:col-span-4">
+                <dt className="text-xs text-neutral-500">Course description</dt>
+                <dd className="whitespace-pre-line">
+                  {offering.course?.description || "—"}
+                </dd>
+              </div>
+              <div className="sm:col-span-4">
+                <dt className="text-xs text-neutral-500">
+                  Pre-requisite / co-requisite
+                </dt>
+                <dd>{offering.course?.prerequisites || "None"}</dd>
+              </div>
+            </dl>
+          </div>
           <label className="text-sm">
-            Course code
-            <input
-              name="syllabusCode"
-              defaultValue={offering.syllabusCode ?? ""}
-              placeholder={offering.course?.code ?? ""}
+            A.Y.
+            <select
+              name="syllabusAy"
+              defaultValue={currentAy}
               className={input}
-            />
-          </label>
-          <label className="text-sm sm:col-span-2">
-            Course title
-            <input
-              name="syllabusTitle"
-              defaultValue={offering.syllabusTitle ?? ""}
-              placeholder={offering.course?.title ?? ""}
-              className={input}
-            />
+            >
+              {ayOptions.map((ay) => (
+                <option key={ay} value={ay}>
+                  {ay}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="text-sm">
-            Credits (units)
-            <input
-              name="syllabusCredits"
-              type="number"
-              min={0}
-              defaultValue={offering.syllabusCredits ?? ""}
-              placeholder={String(offering.course?.credits ?? "")}
+            Semester
+            <select
+              name="syllabusSemester"
+              defaultValue={currentSemester}
               className={input}
-            />
-          </label>
-          <label className="text-sm sm:col-span-4">
-            Course description
-            <textarea
-              name="syllabusDescription"
-              rows={3}
-              defaultValue={offering.syllabusDescription ?? ""}
-              placeholder={offering.course?.description ?? ""}
-              className={input}
-            />
-          </label>
-          <label className="text-sm sm:col-span-2">
-            Pre-requisite / co-requisite
-            <input
-              name="syllabusPrerequisites"
-              defaultValue={offering.syllabusPrerequisites ?? ""}
-              placeholder={offering.course?.prerequisites ?? "None"}
-              className={input}
-            />
-          </label>
-          <label className="text-sm sm:col-span-2">
-            A.Y. and semester
-            <input
-              name="syllabusTerm"
-              defaultValue={offering.syllabusTerm ?? ""}
-              placeholder={offering.academicTerm.label}
-              className={input}
-            />
+            >
+              {SEMESTER_OPTIONS.map((sem) => (
+                <option key={sem} value={sem}>
+                  {sem}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="text-sm sm:col-span-2">
             Modality
-            <input
+            <select
               name="modality"
               defaultValue={offering.modality ?? ""}
-              placeholder="Blended Learning"
               className={input}
-            />
+            >
+              <option value="">Select&hellip;</option>
+              {modalityOptions.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="text-sm">
             Population (students)
@@ -180,46 +220,12 @@ export async function SyllabusPanel({
             />
           </label>
           <label className="text-sm sm:col-span-4">
-            Textbooks / references (one per line)
-            <textarea
-              name="references"
-              rows={3}
-              defaultValue={offering.references ?? ""}
-              className={input}
-            />
-          </label>
-          <label className="text-sm sm:col-span-4">
             Classroom policies
             <textarea
               name="classroomPolicies"
               rows={2}
               defaultValue={offering.classroomPolicies ?? ""}
               placeholder="Leave blank to refer to the Student's Handbook"
-              className={input}
-            />
-          </label>
-          <label className="text-sm">
-            Prepared by
-            <input
-              name="preparedBy"
-              defaultValue={offering.preparedBy ?? ""}
-              placeholder={offering.instructorName ?? ""}
-              className={input}
-            />
-          </label>
-          <label className="text-sm">
-            Reviewed by
-            <input
-              name="reviewedBy"
-              defaultValue={offering.reviewedBy ?? ""}
-              className={input}
-            />
-          </label>
-          <label className="text-sm">
-            Approved by
-            <input
-              name="approvedBy"
-              defaultValue={offering.approvedBy ?? ""}
               className={input}
             />
           </label>
@@ -249,6 +255,70 @@ export async function SyllabusPanel({
               className="rounded-md bg-neutral-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"
             >
               Save details
+            </button>
+          </div>
+        </form>
+      </details>
+
+      <details className="rounded-md border border-neutral-200 dark:border-neutral-800">
+        <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium">
+          Textbooks / references ({references.length})
+        </summary>
+        <div className="border-t border-neutral-200 p-3 dark:border-neutral-800">
+          <ReferencesList
+            key={references.join("\n")}
+            programId={programId}
+            courseId={courseId}
+            offeringId={offering.id}
+            initial={references}
+          />
+        </div>
+      </details>
+
+      <details className="rounded-md border border-neutral-200 dark:border-neutral-800">
+        <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium">
+          Signatories
+        </summary>
+        <form
+          action={updateOfferingSignatories.bind(
+            null,
+            programId,
+            courseId,
+            offering.id,
+          )}
+          className="grid gap-3 border-t border-neutral-200 p-3 sm:grid-cols-3 dark:border-neutral-800"
+        >
+          <label className="text-sm">
+            Prepared by
+            <input
+              name="preparedBy"
+              defaultValue={offering.preparedBy ?? ""}
+              placeholder={offering.instructorName ?? ""}
+              className={input}
+            />
+          </label>
+          <label className="text-sm">
+            Reviewed by
+            <input
+              name="reviewedBy"
+              defaultValue={offering.reviewedBy ?? ""}
+              className={input}
+            />
+          </label>
+          <label className="text-sm">
+            Approved by
+            <input
+              name="approvedBy"
+              defaultValue={offering.approvedBy ?? ""}
+              className={input}
+            />
+          </label>
+          <div className="sm:col-span-3">
+            <button
+              type="submit"
+              className="rounded-md bg-neutral-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"
+            >
+              Save signatories
             </button>
           </div>
         </form>
@@ -321,11 +391,10 @@ export async function SyllabusPanel({
                         />
                       </label>
                       <label className="text-xs sm:col-span-2">
-                        Learning taxonomy
-                        <AutoSubmitInput
+                        Learning taxonomy (Bloom&apos;s)
+                        <TaxonomyPicker
                           name="taxonomy"
                           defaultValue={setting?.taxonomy ?? ""}
-                          placeholder="Apply, Analyze"
                           className={cellInput}
                         />
                       </label>
@@ -482,87 +551,6 @@ export async function SyllabusPanel({
                   {excluded.map((t) => t.name).join(", ")}
                 </p>
               )}
-            </>
-          )}
-        </div>
-      </details>
-
-      <details className="rounded-md border border-neutral-200 dark:border-neutral-800">
-        <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium">
-          CLO &ndash; PLO alignment
-        </summary>
-        <div className="space-y-2 overflow-x-auto border-t border-neutral-200 p-3 dark:border-neutral-800">
-          {blueprint.clos.length === 0 || blueprint.alignment.plos.length === 0 ? (
-            <p className="text-sm text-neutral-500">
-              Needs CLOs and program learning outcomes.
-            </p>
-          ) : (
-            <>
-              <p className="text-xs text-neutral-500">
-                Starts from the program&apos;s mapping. Pick a level to change
-                it for this syllabus only, or &ldquo;Default&rdquo; to follow
-                the program again.
-              </p>
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr>
-                    <th className="px-2 py-1 text-left">PLO</th>
-                    {blueprint.clos.map(({ clo }) => (
-                      <th key={clo.id} className="px-2 py-1 text-left">
-                        {clo.code}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {blueprint.alignment.plos.map((plo) => (
-                    <tr
-                      key={plo.id}
-                      className="border-t border-neutral-200 dark:border-neutral-800"
-                    >
-                      <td className="px-2 py-1 font-medium" title={plo.description}>
-                        {plo.code}
-                      </td>
-                      {blueprint.clos.map(({ clo }) => {
-                        const key = `${clo.id}::${plo.id}`;
-                        const override = blueprint.alignment.overrides.find(
-                          (o) => o.cloId === clo.id && o.ploId === plo.id,
-                        );
-                        return (
-                          <td key={clo.id} className="px-2 py-1">
-                            <form
-                              action={setOfferingAlignment.bind(
-                                null,
-                                programId,
-                                courseId,
-                                offering.id,
-                              )}
-                            >
-                              <input type="hidden" name="cloId" value={clo.id} />
-                              <input type="hidden" name="ploId" value={plo.id} />
-                              <AutoSubmitSelect
-                                name="value"
-                                defaultValue={override ? override.levelCode : "__default"}
-                                className={cellInput}
-                              >
-                                <option value="__default">
-                                  Default ({blueprint.alignment.defaults[key] ?? "none"})
-                                </option>
-                                <option value="">Blank</option>
-                                {blueprint.alignment.levels.map((l) => (
-                                  <option key={l.displayCode} value={l.displayCode}>
-                                    {l.displayCode} &ndash; {l.label}
-                                  </option>
-                                ))}
-                              </AutoSubmitSelect>
-                            </form>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             </>
           )}
         </div>

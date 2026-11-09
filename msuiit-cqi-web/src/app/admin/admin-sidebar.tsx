@@ -18,6 +18,7 @@ export function AdminSidebar({ programs }: { programs: Program[] }) {
         { href: `${base}/dashboard`, label: 'Dashboard' },
         { href: `${base}/courses`, label: 'Courses' },
         { href: `${base}/settings/learning-outcomes`, label: 'Learning Outcomes' },
+        { href: `${base}/settings/cohorts`, label: 'Cohorts' },
       ]
     : [];
   const attainmentItems = base

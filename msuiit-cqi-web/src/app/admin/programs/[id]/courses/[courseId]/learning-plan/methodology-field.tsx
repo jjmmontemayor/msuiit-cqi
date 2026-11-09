@@ -1,44 +1,97 @@
 "use client";
 
-import { useState } from "react";
-import { METHODOLOGIES } from "./presets";
+import { useId, useState } from "react";
+import { LEARNING_RESOURCES, METHODOLOGIES } from "./presets";
 
-// Picking a methodology from the dropdown appends it to the textarea (one per
+// Picking an option from the dropdown appends it to the textarea (one per
 // line), so several can be combined and the text edited freely.
-export function MethodologyField({ className }: { className: string }) {
-  const [value, setValue] = useState("");
+function PresetListField({
+  name,
+  label,
+  placeholder,
+  options,
+  defaultValue = "",
+  className,
+}: {
+  name: string;
+  label: string;
+  placeholder: string;
+  options: string[];
+  defaultValue?: string;
+  className: string;
+}) {
+  const id = useId();
+  const [value, setValue] = useState(defaultValue);
 
-  function add(method: string) {
-    if (!method) return;
+  function add(option: string) {
+    if (!option) return;
     const lines = value.split("\n").map((l) => l.trim());
-    if (lines.includes(method)) return;
-    setValue(value.trim() ? `${value.trim()}\n${method}` : method);
+    if (lines.includes(option)) return;
+    setValue(value.trim() ? `${value.trim()}\n${option}` : option);
   }
 
   return (
     <div className="text-sm sm:col-span-2">
-      <label htmlFor="methodology-select">Teaching/learning methodology</label>
+      <label htmlFor={id}>{label}</label>
       <select
-        id="methodology-select"
+        id={id}
         value=""
         onChange={(e) => add(e.target.value)}
         className={className}
       >
-        <option value="">Add a methodology&hellip;</option>
-        {METHODOLOGIES.map((m) => (
-          <option key={m} value={m}>
-            {m}
+        <option value="">{placeholder}</option>
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {o}
           </option>
         ))}
       </select>
       <textarea
-        name="methodology"
+        name={name}
         rows={3}
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        aria-label="Teaching/learning methodology"
+        aria-label={label}
         className={className}
       />
     </div>
+  );
+}
+
+export function MethodologyField({
+  className,
+  defaultValue,
+}: {
+  className: string;
+  defaultValue?: string;
+}) {
+  return (
+    <PresetListField
+      name="methodology"
+      label="Teaching/learning methodology"
+      placeholder="Add a methodology…"
+      options={METHODOLOGIES}
+      defaultValue={defaultValue}
+      className={className}
+    />
+  );
+}
+
+export function ResourcesField({
+  className,
+  defaultValue,
+}: {
+  className: string;
+  defaultValue?: string;
+}) {
+  return (
+    <PresetListField
+      name="learningResources"
+      label="Learning resources"
+      placeholder="Add a resource…"
+      options={LEARNING_RESOURCES}
+      defaultValue={defaultValue}
+      className={className}
+    />
   );
 }

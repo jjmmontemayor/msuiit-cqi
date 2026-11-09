@@ -6,9 +6,9 @@ const SPECIAL = /[\#$*_`@<>[\]~/]/g;
 export function esc(text: string | null | undefined): string {
   if (!text) return '';
   return text
-    .replace(SPECIAL, (c) => `\${c}`)
+    .replace(SPECIAL, (c) => String.fromCharCode(92) + c)
     .replace(/\r?\n/g, ' \ ')
-    .replace(/^([-+=])/, '\$1');
+    .replace(/^([-+=])/, (c) => String.fromCharCode(92) + c);
 }
 
 // Ordinal semester names used in the course information table.

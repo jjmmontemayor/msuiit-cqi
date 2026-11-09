@@ -81,7 +81,7 @@ export default async function MappingsPage({
     <div className="flex flex-1 flex-col space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          Mapping level per course learning outcome:{' '}
+          Click the pencil on a course to edit its CLOs and set the mapping level (prototype: no admin access needed). Mapping level per course learning outcome:{' '}
           {mappingLevels.map((level) => (
             <span key={level.id}>
               <span className={`font-medium ${levelColors[level.id]?.text ?? ''}`}>
@@ -129,6 +129,7 @@ export default async function MappingsPage({
           <ExpandAllCheckbox />
           <div className="max-h-[70vh] overflow-auto rounded-md border border-neutral-200 dark:border-neutral-800">
             <MappingTable
+              editable
               programId={program.id}
               programCode={program.code}
               curriculumVersionId={selectedVersionId ?? ''}

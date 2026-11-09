@@ -3,11 +3,13 @@
 import { useState, useTransition } from "react";
 import {
   deleteLearningPlanEntry,
+  updateLearningPlanEntry,
   reorderLearningPlanEntries,
 } from "../../../../../actions";
-import type { AssessmentTask, LearningPlanEntry } from "@/lib/api";
+import type { AssessmentTask, Clo, LearningPlanEntry } from "@/lib/api";
+import { EntryForm } from "./entry-form";
 import { EntryAssessments } from "./entry-assessments";
-import { DeleteButton } from "@/components/icon-buttons";
+import { DeleteButton, EditButton } from "@/components/icon-buttons";
 
 export function LearningPlanTable({
   programId,
@@ -15,15 +17,18 @@ export function LearningPlanTable({
   offeringId,
   entries,
   tasks,
+  clos,
 }: {
   programId: string;
   courseId: string;
   offeringId: string;
   entries: LearningPlanEntry[];
   tasks: AssessmentTask[];
+  clos: Clo[];
 }) {
   const [rows, setRows] = useState(entries);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function handleDrop(targetIndex: number) {
@@ -62,7 +67,29 @@ export function LearningPlanTable({
           </tr>
         </thead>
         <tbody className={isPending ? "opacity-50" : undefined}>
-          {rows.map((entry, i) => (
+          {rows.map((entry, i) =>
+            entry.id === editingId ? (
+              <tr
+                key={entry.id}
+                className="border-t border-neutral-200 dark:border-neutral-800"
+              >
+                <td colSpan={9} className="p-3">
+                  <EntryForm
+                    action={updateLearningPlanEntry.bind(
+                      null,
+                      programId,
+                      courseId,
+                      entry.id,
+                    )}
+                    clos={clos}
+                    entry={entry}
+                    title={`Edit ${entry.weekLabel}`}
+                    submitLabel="Save"
+                    onDone={() => setEditingId(null)}
+                  />
+                </td>
+              </tr>
+            ) : (
             <tr
               key={entry.id}
               draggable
@@ -80,14 +107,14 @@ export function LearningPlanTable({
                 {entry.weekLabel}
               </td>
               <td className="px-3 py-2">{entry.topics}</td>
-              <td className="px-3 py-2 text-neutral-600 dark:text-neutral-400">
+              <td className="whitespace-pre-line px-3 py-2 text-neutral-600 dark:text-neutral-400">
                 {entry.lessonOutcome}
               </td>
               <td className="px-3 py-2">{entry.coLabels}</td>
               <td className="whitespace-pre-line px-3 py-2 text-neutral-600 dark:text-neutral-400">
                 {entry.methodology}
               </td>
-              <td className="px-3 py-2 text-neutral-600 dark:text-neutral-400">
+              <td className="whitespace-pre-line px-3 py-2 text-neutral-600 dark:text-neutral-400">
                 {entry.learningResources}
               </td>
               <td className="min-w-48 px-3 py-2 text-neutral-600 dark:text-neutral-400">
@@ -106,19 +133,26 @@ export function LearningPlanTable({
                   )}
               </td>
               <td className="px-3 py-2">
-                <form
-                  action={deleteLearningPlanEntry.bind(
-                    null,
-                    programId,
-                    courseId,
-                    entry.id,
-                  )}
-                >
-                  <DeleteButton />
-                </form>
+                <div className="flex items-center gap-1">
+                  <EditButton
+                    title={`Edit ${entry.weekLabel}`}
+                    onClick={() => setEditingId(entry.id)}
+                  />
+                  <form
+                    action={deleteLearningPlanEntry.bind(
+                      null,
+                      programId,
+                      courseId,
+                      entry.id,
+                    )}
+                  >
+                    <DeleteButton />
+                  </form>
+                </div>
               </td>
             </tr>
-          ))}
+            ),
+          )}
         </tbody>
       </table>
     </div>

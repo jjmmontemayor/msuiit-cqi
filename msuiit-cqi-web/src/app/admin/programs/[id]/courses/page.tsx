@@ -10,15 +10,14 @@ import {
 import {
   createAndLinkCourse,
   linkExistingCourse,
-  moveCourse,
   setCourseCategory,
   setCourseSchedule,
 } from "../../../actions";
 import { ScheduleSelect } from "./schedule-select";
 import { CategorySelect } from "./category-select";
 import { AddCoursePanel } from "./add-course-panel";
-import { CourseRow } from "./course-row";
-import { DropZone } from "./drop-zone";
+import { CourseTableRow } from "./course-table-row";
+import { rowTone, YEAR_SWATCHES } from "./row-tone";
 
 export const dynamic = "force-dynamic";
 
@@ -94,6 +93,13 @@ export default async function ProgramCoursesPage({
 
   const totals = summarize(curriculumCourses);
 
+  const sortedCourses = [...curriculumCourses].sort(
+    (a, b) =>
+      (a.yearLevel ?? 99) - (b.yearLevel ?? 99) ||
+      termRank(a.term ?? "") - termRank(b.term ?? "") ||
+      a.course.code.localeCompare(b.course.code),
+  );
+
   // Year -> term -> courses. Years 1..4 and the two standard semesters always
   // exist so an empty card can still receive a dropped course.
   const maxYear = Math.max(
@@ -135,16 +141,13 @@ export default async function ProgramCoursesPage({
       ) / 10
     : 0;
 
-  const move = moveCourse.bind(null, program.id);
-
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Courses — {program.code}</h1>
         <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-          Arranged by year level, then by the semester each course is offered.
-          Click the pencil on a course to edit it, then drag it onto another
-          year or semester.
+          All courses in one table, ordered by year level and semester. Click
+          the pencil on a course to change its year, semester or category.
         </p>
       </div>
 
@@ -188,131 +191,83 @@ export default async function ProgramCoursesPage({
           No courses yet &mdash; use &ldquo;Add course&rdquo; above.
         </p>
       ) : (
-        yearBlocks.map(({ yearLevel, courses: yearCourses, terms }) => {
-          const ys = summarize(yearCourses);
-          const card = (
-            <>
-              <div className="flex items-baseline justify-between border-b border-neutral-200 pb-2 dark:border-neutral-800">
-                <h2 className="text-xl font-semibold">{yearName(yearLevel)}</h2>
-                <span className="text-sm text-neutral-500">
-                  {ys.total} units &middot; Major {ys.MAJOR} &middot; Minor{" "}
-                  {ys.MINOR} &middot; Elective {ys.ELECTIVE}
-                </span>
-              </div>
-              {terms.map(({ term, courses }) => {
-                const s = summarize(courses);
-                const body = (
-                  <>
-                    <h3 className="flex items-baseline justify-between text-lg font-medium">
-                      <span>{term || "Unassigned Term"}</span>
-                      <span className="text-sm font-normal text-neutral-500">
-                        {s.total} units
-                      </span>
-                    </h3>
-                    <p className="mt-0.5 text-xs text-neutral-500">
-                      Major {s.MAJOR} &middot; Minor {s.MINOR} &middot; Elective{" "}
-                      {s.ELECTIVE}
-                      {s.uncategorized > 0 && (
-                        <> &middot; Uncategorized {s.uncategorized}</>
-                      )}
-                    </p>
-                    <ul className="mt-2 divide-y divide-neutral-200 rounded-md border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
-                      {courses.length === 0 && (
-                        <li className="px-4 py-3 text-sm text-neutral-400">
-                          No courses — drag one here.
-                        </li>
-                      )}
-                      {courses.map((cc) => {
-                        const category = effectiveCategory(cc);
-                        return (
-                          <CourseRow
-                            key={cc.id}
-                            id={cc.id}
-                            href={`/admin/programs/${program.id}/courses/${cc.course.id}`}
-                            code={cc.course.code}
-                            title={cc.course.title}
-                            electiveGroup={cc.electiveGroup ?? null}
-                            unitsLabel={`${cc.course.credits ?? "—"} ${
-                              cc.course.credits === 1 ? "unit" : "units"
-                            }`}
-                            term={cc.term ?? null}
-                            summary={`${
-                              cc.yearLevel != null
-                                ? `Year ${cc.yearLevel}`
-                                : "No year"
-                            } · ${cc.term ?? "No semester"} · ${
-                              category
-                                ? CATEGORY_LABELS[category]
-                                : "Uncategorized"
-                            }`}
-                            editor={
-                              <>
-                                <ScheduleSelect
-                                  action={setCourseSchedule.bind(
-                                    null,
-                                    program.id,
-                                    cc.id,
-                                  )}
-                                  yearLevel={cc.yearLevel}
-                                  term={cc.term}
-                                  label={cc.course.code}
-                                />
-                                <CategorySelect
-                                  action={setCourseCategory.bind(
-                                    null,
-                                    program.id,
-                                    cc.id,
-                                  )}
-                                  value={cc.category}
-                                  emptyLabel={
-                                    cc.electiveGroup
-                                      ? "Elective (auto)"
-                                      : "Uncategorized"
-                                  }
-                                  label={`Category for ${cc.course.code}`}
-                                />
-                              </>
-                            }
-                          />
-                        );
-                      })}
-                    </ul>
-                  </>
-                );
-                return yearLevel == null ? (
-                  <section key={term}>{body}</section>
-                ) : (
-                  <DropZone
-                    key={term}
-                    action={move}
-                    yearLevel={yearLevel}
-                    term={term}
-                    className="rounded-md"
-                  >
-                    {body}
-                  </DropZone>
-                );
-              })}
-            </>
-          );
-          const cardClass =
-            "space-y-5 rounded-lg border border-neutral-300 p-4 dark:border-neutral-700";
-          return yearLevel == null ? (
-            <div key="none" className={cardClass}>
-              {card}
-            </div>
-          ) : (
-            // Dropping on the card outside a semester keeps the course's term.
-            <DropZone
-              key={yearLevel}
-              action={move}
-              yearLevel={yearLevel}
-              className={cardClass}
-            >
-              {card}
-            </DropZone>
-          );
-        })
+        <div className="space-y-2">
+          <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-500">
+            {YEAR_SWATCHES.map(([year, swatch]) => (
+              <span key={year} className="flex items-center gap-1.5">
+                <span className={`inline-block h-3 w-3 rounded-sm ${swatch}`} />
+                Year {year}
+              </span>
+            ))}
+            <span>
+              Lighter shade = 1st Sem, deeper = 2nd Sem, deepest = Summer
+            </span>
+          </p>
+          <div className="overflow-x-auto rounded-md border border-neutral-200 dark:border-neutral-800">
+            <table className="min-w-full text-sm">
+              <thead className="bg-neutral-100 dark:bg-neutral-900">
+                <tr>
+                  <th className="px-3 py-2 text-left">Code</th>
+                  <th className="px-3 py-2 text-left">Title</th>
+                  <th className="px-3 py-2 text-left">Year level</th>
+                  <th className="px-3 py-2 text-left">Semester</th>
+                  <th className="px-3 py-2 text-right">Units</th>
+                  <th className="px-3 py-2 text-left">Category</th>
+                  <th className="w-10 px-3 py-2" />
+                </tr>
+              </thead>
+              <tbody>
+                {sortedCourses.map((cc) => {
+                  const category = effectiveCategory(cc);
+                  return (
+                    <CourseTableRow
+                      key={cc.id}
+                      href={`/admin/programs/${program.id}/courses/${cc.course.id}`}
+                      code={cc.course.code}
+                      title={cc.course.title}
+                      electiveGroup={cc.electiveGroup ?? null}
+                      yearLabel={yearName(cc.yearLevel ?? null)}
+                      termLabel={cc.term ?? "—"}
+                      unitsLabel={`${cc.course.credits ?? "—"}`}
+                      tone={rowTone(cc.yearLevel ?? null, cc.term ?? null)}
+                      categoryLabel={
+                        category ? CATEGORY_LABELS[category] : "Uncategorized"
+                      }
+                      scheduleEditor={
+                        <ScheduleSelect
+                          action={setCourseSchedule.bind(
+                            null,
+                            program.id,
+                            cc.id,
+                          )}
+                          yearLevel={cc.yearLevel}
+                          term={cc.term}
+                          label={cc.course.code}
+                        />
+                      }
+                      categoryEditor={
+                        <CategorySelect
+                          action={setCourseCategory.bind(
+                            null,
+                            program.id,
+                            cc.id,
+                          )}
+                          value={cc.category}
+                          emptyLabel={
+                            cc.electiveGroup
+                              ? "Elective (auto)"
+                              : "Uncategorized"
+                          }
+                          label={`Category for ${cc.course.code}`}
+                        />
+                      }
+                    />
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
     </div>
   );

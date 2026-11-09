@@ -13,7 +13,6 @@ import {
 } from "@/lib/api";
 import {
   createCourseOffering,
-  createLearningPlanEntry,
   deleteLearningPlan,
   setLearningPlanArchived,
 } from "../../../../../actions";
@@ -21,7 +20,7 @@ import { CourseAdminTabs } from "../course-admin-tabs";
 import { ConfirmForm } from "./confirm-form";
 import { DeleteButton } from "@/components/icon-buttons";
 import { LearningPlanTable } from "./learning-plan-table";
-import { MethodologyField } from "./methodology-field";
+import { AddEntryForm } from "./add-entry-form";
 import { SyllabusPanel } from "./syllabus-panel";
 
 export const dynamic = "force-dynamic";
@@ -46,99 +45,6 @@ async function getCourse(id: string): Promise<Course> {
     }
     throw err;
   }
-}
-
-function AddEntryForm({
-  programId,
-  courseId,
-  offeringId,
-  clos,
-}: {
-  programId: string;
-  courseId: string;
-  offeringId: string;
-  clos: Clo[];
-}) {
-  return (
-    <form
-      action={createLearningPlanEntry.bind(
-        null,
-        programId,
-        courseId,
-        offeringId,
-      )}
-      className="mt-3 grid gap-3 rounded-md border border-neutral-200 p-4 sm:grid-cols-4 dark:border-neutral-800"
-    >
-      <h3 className="text-sm font-medium sm:col-span-4">Add week entry</h3>
-      <label className="text-sm">
-        Week label
-        <input
-          name="weekLabel"
-          required
-          placeholder="1-4"
-          className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-        />
-      </label>
-      <label className="text-sm sm:col-span-3">
-        Topics
-        <input
-          name="topics"
-          required
-          className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-        />
-      </label>
-      <label className="text-sm sm:col-span-2">
-        Lesson learning outcome
-        <textarea
-          name="lessonOutcome"
-          rows={2}
-          className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-        />
-      </label>
-      <fieldset className="text-sm sm:col-span-2">
-        <legend>CLO(s)</legend>
-        {clos.length === 0 ? (
-          <p className="mt-1 text-xs text-neutral-500">
-            No CLOs defined yet for this course.
-          </p>
-        ) : (
-          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 rounded-md border border-neutral-300 px-3 py-1.5 dark:border-neutral-700">
-            {clos.map((clo) => (
-              <label key={clo.id} className="flex items-center gap-1 text-xs">
-                <input
-                  type="checkbox"
-                  name="cloLabels"
-                  value={clo.code}
-                  className="rounded border-neutral-300 dark:border-neutral-700"
-                />
-                {clo.code}
-              </label>
-            ))}
-          </div>
-        )}
-      </fieldset>
-      <MethodologyField className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900" />
-      <label className="text-sm sm:col-span-2">
-        Learning resources
-        <textarea
-          name="learningResources"
-          rows={2}
-          className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-        />
-      </label>
-      <p className="text-xs text-neutral-500 sm:col-span-4">
-        Assessments are added per week from the table once the entry exists.
-      </p>
-      <div className="sm:col-span-4">
-        <button
-          type="submit"
-          className="rounded-md bg-neutral-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"
-        >
-          Add Entry
-        </button>
-      </div>
-    </form>
-  );
 }
 
 export default async function AdminCourseLearningPlanPage({
@@ -260,12 +166,13 @@ export default async function AdminCourseLearningPlanPage({
                           Drag a row by its handle to reorder.
                         </p>
                         <LearningPlanTable
-                          key={entries.map((e) => e.id).join(",")}
+                          key={JSON.stringify(entries)}
                           programId={program.id}
                           courseId={course.id}
                           offeringId={o.id}
                           entries={entries}
                           tasks={tasks}
+                          clos={clos}
                         />
                       </>
                     )}

@@ -223,12 +223,13 @@ export class SyllabusService {
 
     return {
       course: {
-        code: offering.syllabusCode || offering.course.code,
-        title: offering.syllabusTitle || offering.course.title,
-        description: offering.syllabusDescription || offering.course.description,
-        credits: offering.syllabusCredits ?? offering.course.credits,
-        prerequisites:
-          offering.syllabusPrerequisites || offering.course.prerequisites,
+        // Always inherited from the course record; per-syllabus overrides
+        // are no longer supported.
+        code: offering.course.code,
+        title: offering.course.title,
+        description: offering.course.description,
+        credits: offering.course.credits,
+        prerequisites: offering.course.prerequisites,
       },
       term: {
         schoolYearStart: offering.academicTerm.schoolYearStart,

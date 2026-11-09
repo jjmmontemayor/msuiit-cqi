@@ -27,3 +27,18 @@ export const ASSESSMENT_TYPES: [string, boolean][] = [
   ["Midterm exam", false],
   ["Final exam", false],
 ];
+
+export const LEARNING_RESOURCES = [
+  "Lecture slides",
+  "Textbook",
+  "Course handout / module",
+  "Video lecture",
+  "Online tutorial",
+  "Laboratory manual",
+  "Code repository",
+  "Reference article / paper",
+  "Online documentation",
+  "Learning management system (LMS)",
+  "Software / IDE",
+  "Case study materials",
+];
