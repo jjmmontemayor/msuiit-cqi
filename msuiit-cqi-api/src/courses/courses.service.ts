@@ -23,6 +23,7 @@ export class CoursesService {
   private async resolveCloWhere(params: {
     curriculumVersionId?: string;
     cohortId?: string;
+    programId?: string;
   }) {
     let curriculumVersionId = params.curriculumVersionId;
     if (!curriculumVersionId && params.cohortId) {
@@ -35,6 +36,7 @@ export class CoursesService {
       return { curriculumVersionId };
     }
     const latestVersion = await this.prisma.curriculumVersion.findFirst({
+      where: params.programId ? { programId: params.programId } : undefined,
       orderBy: { createdAt: 'desc' },
     });
     return latestVersion
@@ -50,6 +52,7 @@ export class CoursesService {
     const cloWhere = await this.resolveCloWhere({
       curriculumVersionId,
       cohortId,
+      programId,
     });
     return this.prisma.course.findMany({
       where: programId

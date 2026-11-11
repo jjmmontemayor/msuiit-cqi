@@ -287,7 +287,7 @@ export default async function CourseDetailsPage({
                   offeringId={selectedOffering.id}
                   entries={learningPlanEntries}
                   tasks={tasks}
-                  clos={course.clos}
+                  clos={versionClos}
                   weeks={course.weeks}
                 />
               )}
@@ -295,7 +295,7 @@ export default async function CourseDetailsPage({
                 programId={program.id}
                 courseId={course.id}
                 offeringId={selectedOffering.id}
-                clos={course.clos}
+                clos={versionClos}
                 weeks={course.weeks}
               />
               <SyllabusPanel

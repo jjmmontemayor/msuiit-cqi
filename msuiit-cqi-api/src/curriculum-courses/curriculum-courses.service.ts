@@ -11,8 +11,11 @@ export class CurriculumCoursesService {
   // for display (e.g. a "N CLOs" count), so it's always narrowed to the most
   // recently created version rather than every version's CLOs merged
   // together.
-  private async latestCloWhere() {
+  private async latestCloWhere(programId?: string) {
+    // Scoped to the program so another program's newer version doesn't hide
+    // this program's CLOs.
     const latestVersion = await this.prisma.curriculumVersion.findFirst({
+      where: programId ? { programId } : undefined,
       orderBy: { createdAt: 'desc' },
     });
     return latestVersion
@@ -46,7 +49,7 @@ export class CurriculumCoursesService {
   }
 
   async findAll(programId?: string) {
-    const cloWhere = await this.latestCloWhere();
+    const cloWhere = await this.latestCloWhere(programId);
     return this.prisma.curriculumCourse.findMany({
       where: programId ? { programId } : undefined,
       orderBy: [{ yearLevel: 'asc' }, { displayOrder: 'asc' }],
@@ -61,15 +64,17 @@ export class CurriculumCoursesService {
   }
 
   async findOne(id: string) {
-    const cloWhere = await this.latestCloWhere();
-    const curriculumCourse = await this.prisma.curriculumCourse.findUnique({
+    const base = await this.prisma.curriculumCourse.findUnique({
+      where: { id },
+    });
+    if (!base) {
+      throw new NotFoundException(`Curriculum course ${id} not found`);
+    }
+    const cloWhere = await this.latestCloWhere(base.programId);
+    return this.prisma.curriculumCourse.findUniqueOrThrow({
       where: { id },
       include: { course: { include: { clos: { where: cloWhere } } } },
     });
-    if (!curriculumCourse) {
-      throw new NotFoundException(`Curriculum course ${id} not found`);
-    }
-    return curriculumCourse;
   }
 
   async update(id: string, dto: UpdateCurriculumCourseDto) {
