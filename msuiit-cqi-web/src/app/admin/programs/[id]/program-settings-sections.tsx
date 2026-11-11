@@ -83,16 +83,6 @@ export async function ProgramSettingsSections({
           <div className="text-sm">
             <span className="font-medium">{program.code}</span> &mdash;{" "}
             {program.name}
-            <div className="mt-1">
-              <a
-                href={`/programs/${program.code}`}
-                target="_blank"
-                rel="noreferrer"
-                className="text-blue-600 hover:underline dark:text-blue-400"
-              >
-                View public page &#8599;
-              </a>
-            </div>
           </div>
         }
       >

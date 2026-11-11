@@ -14,12 +14,12 @@ function parse(label: string): [number, number] | null {
 }
 
 function format(from: number, to: number | null): string {
-  return to && to > from ? `Week ${from} - Week ${to}` : `Week ${from}`;
+  return to && to > from ? `${from} - ${to}` : `${from}`;
 }
 
 // Week selection for a learning plan entry. When the course has a number of
 // weeks, pick a first week and optionally a last week from it; the label is
-// saved as "Week 2" or "Week 2 - Week 3". Without a week count (or for a label
+// saved as "2" or "2 - 3". Without a week count (or for a label
 // that isn't week numbers) it stays a free-text field.
 export function WeekField({
   weeks,
@@ -46,7 +46,7 @@ export function WeekField({
         <input
           name="weekLabel"
           required
-          placeholder="Week 1"
+          placeholder="1"
           defaultValue={defaultValue}
           className={className}
         />
@@ -75,7 +75,7 @@ export function WeekField({
         >
           {options.map((w) => (
             <option key={w} value={w}>
-              Week {w}
+              {w}
             </option>
           ))}
         </select>
@@ -93,7 +93,7 @@ export function WeekField({
             .filter((w) => w > from)
             .map((w) => (
               <option key={w} value={w}>
-                Week {w}
+                {w}
               </option>
             ))}
         </select>

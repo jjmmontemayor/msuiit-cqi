@@ -145,10 +145,18 @@ export default async function CourseDetailsPage({
   const editingSyllabus = edit === "1";
 
   const editingCourse = editCourse === "1";
-  // Back to the page as it is now, minus the course-edit switch.
-  const courseUrl = `/programs/${program.id}/courses/${course.id}${
-    versionIdParam ? `?curriculumVersionId=${versionIdParam}` : ""
-  }`;
+  // The page as it is now (open syllabus, edit/copy mode, version), minus the
+  // course-edit switch, so editing the course doesn't close the syllabus.
+  const keep: Record<string, string> = {};
+  if (versionIdParam) keep.curriculumVersionId = versionIdParam;
+  if (offeringIdParam) keep.offeringId = offeringIdParam;
+  if (edit) keep.edit = edit;
+  if (copySourceId) keep.copy = copySourceId;
+  const withQuery = (extra: Record<string, string> = {}) => {
+    const q = new URLSearchParams({ ...keep, ...extra }).toString();
+    return `/programs/${program.id}/courses/${course.id}${q ? `?${q}` : ""}`;
+  };
+  const courseUrl = withQuery();
 
   return (
     <div className="space-y-8">
@@ -164,7 +172,7 @@ export default async function CourseDetailsPage({
             {course.code} — {course.title}
           </h1>
           <Link
-            href={editingCourse ? courseUrl : `${courseUrl}${courseUrl.includes("?") ? "&" : "?"}editCourse=1`}
+            href={editingCourse ? courseUrl : withQuery({ editCourse: "1" })}
             title={editingCourse ? "Done editing course" : "Edit course description and details"}
             aria-label={editingCourse ? "Done editing course" : "Edit course description and details"}
             className={iconLinkClass}
@@ -192,6 +200,7 @@ export default async function CourseDetailsPage({
           clos={versionClos}
           editing={editingCourse}
           doneHref={courseUrl}
+          preserve={keep}
         />
       </div>
 

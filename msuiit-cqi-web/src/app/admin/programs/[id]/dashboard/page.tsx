@@ -36,6 +36,14 @@ export default async function ProgramDashboardPage({
         <h1 className="text-2xl font-semibold">
           {program.code} — {program.name}
         </h1>
+        <a
+          href={`/programs/${program.code}`}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-1 inline-block text-sm text-blue-600 hover:underline dark:text-blue-400"
+        >
+          View public page &#8599;
+        </a>
         {program.description && (
           <p className="mt-1 text-neutral-600 dark:text-neutral-400">{program.description}</p>
         )}

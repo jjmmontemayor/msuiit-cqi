@@ -25,6 +25,7 @@ export function CourseInfo({
   clos,
   editing,
   doneHref,
+  preserve = {},
 }: {
   programId: string;
   course: Course;
@@ -34,6 +35,8 @@ export function CourseInfo({
   clos: Clo[];
   editing: boolean;
   doneHref: string;
+  // Query params to carry through the version switch (open syllabus, etc.).
+  preserve?: Record<string, string>;
 }) {
   return (
     <div className="space-y-8">
@@ -177,6 +180,11 @@ export function CourseInfo({
           {curriculumVersions.length > 0 && (
             <form method="get" className="flex items-end gap-2">
               {editing && <input type="hidden" name="editCourse" value="1" />}
+              {Object.entries(preserve)
+                .filter(([k]) => k !== "curriculumVersionId")
+                .map(([k, v]) => (
+                  <input key={k} type="hidden" name={k} value={v} />
+                ))}
               <label className="text-sm">
                 Curriculum Version
                 <select
