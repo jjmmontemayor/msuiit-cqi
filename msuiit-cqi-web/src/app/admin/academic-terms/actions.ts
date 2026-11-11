@@ -25,3 +25,21 @@ export async function deleteAcademicTerm(termId: string) {
   await apiFetch(`/academic-terms/${termId}`, { method: 'DELETE' });
   revalidatePath('/admin/academic-terms');
 }
+
+// The label is regenerated from the year and semester by the API.
+export async function updateAcademicTerm(termId: string, formData: FormData) {
+  const schoolYearStart = Number(str(formData, 'schoolYearStart'));
+  const schoolYearEnd = Number(str(formData, 'schoolYearEnd'));
+  const semester = str(formData, 'semester');
+  if (!schoolYearStart || !schoolYearEnd || !semester) return;
+
+  await apiFetch(`/academic-terms/${termId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ schoolYearStart, schoolYearEnd, semester, label: '' }),
+  });
+
+  revalidatePath('/admin/academic-terms');
+  // The term label shows on syllabi throughout the app.
+  revalidatePath('/admin', 'layout');
+  revalidatePath('/programs', 'layout');
+}

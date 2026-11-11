@@ -1,6 +1,6 @@
 import { apiFetch, type AcademicTerm } from '@/lib/api';
-import { createAcademicTerm, deleteAcademicTerm } from './actions';
-import { DeleteButton } from '@/components/icon-buttons';
+import { createAcademicTerm } from './actions';
+import { TermRow } from './term-row';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,17 +27,7 @@ export default async function AdminAcademicTermsPage() {
         ) : (
           <ul className="divide-y divide-neutral-200 rounded-md border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
             {sorted.map((t) => (
-              <li key={t.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
-                <div className="text-sm">
-                  <span className="font-medium">
-                    {t.schoolYearStart}-{t.schoolYearEnd} {t.semester}
-                  </span>
-                  <span className="ml-2 text-neutral-600 dark:text-neutral-400">{t.label}</span>
-                </div>
-                <form action={deleteAcademicTerm.bind(null, t.id)}>
-                  <DeleteButton />
-                </form>
-              </li>
+              <TermRow key={t.id} term={t} />
             ))}
           </ul>
         )}
