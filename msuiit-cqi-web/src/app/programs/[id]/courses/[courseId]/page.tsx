@@ -81,22 +81,23 @@ export default async function CourseDetailsPage({
     curriculumVersionId: versionIdParam,
     editCourse,
   } = await searchParams;
+  // The URL may carry the program code (e.g. BSCS) rather than its id, so resolve
+  // the program first and use its real id for the program-scoped queries.
+  const program = await getProgram(id);
   const [
-    program,
     course,
     allOfferings,
     academicTerms,
     curriculumVersions,
     curriculumCourses,
   ] = await Promise.all([
-    getProgram(id),
     getCourse(courseId),
     apiFetch<CourseOffering[]>(
       `/course-offerings?courseId=${courseId}&archived=include`,
     ),
     apiFetch<AcademicTerm[]>("/academic-terms"),
-    apiFetch<CurriculumVersion[]>(`/curriculum-versions?programId=${id}`),
-    apiFetch<CurriculumCourse[]>(`/curriculum-courses?programId=${id}`),
+    apiFetch<CurriculumVersion[]>(`/curriculum-versions?programId=${program.id}`),
+    apiFetch<CurriculumCourse[]>(`/curriculum-courses?programId=${program.id}`),
   ]);
   const selectedVersionId = versionIdParam || curriculumVersions[0]?.id;
   const versionClos = selectedVersionId
