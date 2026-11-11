@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { PerformanceIndicatorsService } from './performance-indicators.service';
 import { CreatePerformanceIndicatorDto } from './dto/create-performance-indicator.dto';
+import { ReorderPerformanceIndicatorsDto } from './dto/reorder-performance-indicators.dto';
 import { UpdatePerformanceIndicatorDto } from './dto/update-performance-indicator.dto';
 
 @Controller('performance-indicators')
@@ -19,6 +20,11 @@ export class PerformanceIndicatorsController {
   @Post()
   create(@Body() dto: CreatePerformanceIndicatorDto) {
     return this.piService.create(dto);
+  }
+
+  @Post('reorder')
+  reorder(@Body() dto: ReorderPerformanceIndicatorsDto) {
+    return this.piService.reorder(dto);
   }
 
   @Get()

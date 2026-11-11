@@ -11,13 +11,16 @@ import {
   type CurriculumCourse,
   type CurriculumVersion,
   type LearningPlanEntry,
+  type OfferingBlueprint,
   type Program,
 } from "@/lib/api";
 import {
   CheckIcon,
+  EyeIcon,
   iconLinkClass,
   PencilIcon,
 } from "@/components/icon-buttons";
+import { ReadOnlyLearningPlan, SyllabusSummary } from "./syllabus-view";
 import { CourseInfo } from "./course-info";
 import {
   AddSyllabus,
@@ -132,13 +135,13 @@ export default async function CourseDetailsPage({
         `/learning-plan-entries?courseOfferingId=${selectedOfferingId}`,
       )
     : [];
-  const tasks = selectedOfferingId
-    ? (
-        await apiFetch<{ tasks: AssessmentTask[] }>(
-          `/course-offerings/${selectedOfferingId}/blueprint`,
-        )
-      ).tasks
-    : [];
+  const blueprint = selectedOfferingId
+    ? await apiFetch<OfferingBlueprint>(
+        `/course-offerings/${selectedOfferingId}/blueprint`,
+      )
+    : null;
+  const tasks: AssessmentTask[] = blueprint?.tasks ?? [];
+  const editingSyllabus = edit === "1";
 
   const editingCourse = editCourse === "1";
   // Back to the page as it is now, minus the course-edit switch.
@@ -236,58 +239,87 @@ export default async function CourseDetailsPage({
             >
               &larr; All syllabi
             </Link>
-            <div className="text-right">
-            <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">
-              {edit === "1" ? "Editing syllabus" : "Syllabus"}
-            </div>
-            <div className="text-base font-medium">
-              {selectedOffering.academicTerm.label}
-              {selectedOffering.section ? ` — ${selectedOffering.section}` : ""}
-              {selectedOffering.instructorName
-                ? ` (${selectedOffering.instructorName})`
-                : ""}
-            </div>
+            <div className="flex items-start gap-3">
+              <div className="text-right">
+                <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+                  {editingSyllabus ? "Editing syllabus" : "Syllabus"}
+                </div>
+                <div className="text-base font-medium">
+                  {selectedOffering.academicTerm.label}
+                  {selectedOffering.section
+                    ? ` — ${selectedOffering.section}`
+                    : ""}
+                  {selectedOffering.instructorName
+                    ? ` (${selectedOffering.instructorName})`
+                    : ""}
+                </div>
+              </div>
+              <Link
+                href={`/programs/${program.id}/courses/${course.id}?offeringId=${selectedOffering.id}${editingSyllabus ? "" : "&edit=1"}`}
+                className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-950 dark:hover:bg-neutral-900"
+              >
+                {editingSyllabus ? <EyeIcon /> : <PencilIcon />}
+                {editingSyllabus ? "View" : "Edit"}
+              </Link>
             </div>
           </div>
 
-          {edit === "1" && (
-            <SyllabusInfoForm
-              programId={program.id}
-              courseId={course.id}
-              offering={selectedOffering}
-              academicTerms={academicTerms}
-            />
-          )}
+          {editingSyllabus ? (
+            <>
+              <SyllabusInfoForm
+                programId={program.id}
+                courseId={course.id}
+                offering={selectedOffering}
+                academicTerms={academicTerms}
+              />
 
-          <h3 className="pt-3 text-base font-medium">Learning plan</h3>
-          {learningPlanEntries.length === 0 ? (
-            <p className="mt-2 text-sm text-neutral-500">
-              No learning plan added for this syllabus yet.
-            </p>
+              <h3 className="pt-3 text-base font-medium">Learning plan</h3>
+              {learningPlanEntries.length === 0 ? (
+                <p className="mt-2 text-sm text-neutral-500">
+                  No learning plan added for this syllabus yet.
+                </p>
+              ) : (
+                <LearningPlanTable
+                  key={JSON.stringify(learningPlanEntries)}
+                  programId={program.id}
+                  courseId={course.id}
+                  offeringId={selectedOffering.id}
+                  entries={learningPlanEntries}
+                  tasks={tasks}
+                  clos={course.clos}
+                  weeks={course.weeks}
+                />
+              )}
+              <AddEntryForm
+                programId={program.id}
+                courseId={course.id}
+                offeringId={selectedOffering.id}
+                clos={course.clos}
+                weeks={course.weeks}
+              />
+              <SyllabusPanel
+                programId={program.id}
+                courseId={course.id}
+                offering={selectedOffering}
+              />
+            </>
           ) : (
-            <LearningPlanTable
-              key={JSON.stringify(learningPlanEntries)}
-              programId={program.id}
-              courseId={course.id}
-              offeringId={selectedOffering.id}
-              entries={learningPlanEntries}
-              tasks={tasks}
-              clos={course.clos}
-              weeks={course.weeks}
-            />
+            <>
+              <h3 className="pt-3 text-base font-medium">Learning plan</h3>
+              <ReadOnlyLearningPlan
+                entries={learningPlanEntries}
+                tasks={tasks}
+              />
+              {blueprint && (
+                <SyllabusSummary
+                  programId={program.id}
+                  courseId={course.id}
+                  offering={selectedOffering}
+                  blueprint={blueprint}
+                />
+              )}
+            </>
           )}
-          <AddEntryForm
-            programId={program.id}
-            courseId={course.id}
-            offeringId={selectedOffering.id}
-            clos={course.clos}
-            weeks={course.weeks}
-          />
-          <SyllabusPanel
-            programId={program.id}
-            courseId={course.id}
-            offering={selectedOffering}
-          />
         </section>
       )}
       </div>

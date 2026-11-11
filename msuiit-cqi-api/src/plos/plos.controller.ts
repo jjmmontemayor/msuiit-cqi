@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { PlosService } from './plos.service';
 import { CreatePloDto } from './dto/create-plo.dto';
+import { ReorderPlosDto } from './dto/reorder-plos.dto';
 import { UpdatePloDto } from './dto/update-plo.dto';
 
 @Controller('plos')
@@ -19,6 +20,11 @@ export class PlosController {
   @Post()
   create(@Body() dto: CreatePloDto) {
     return this.plosService.create(dto);
+  }
+
+  @Post('reorder')
+  reorder(@Body() dto: ReorderPlosDto) {
+    return this.plosService.reorder(dto);
   }
 
   @Get()

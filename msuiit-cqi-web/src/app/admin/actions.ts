@@ -327,17 +327,13 @@ export async function removeCohortAdviser(programId: string, cohortAdviserId: st
 }
 
 export async function createPlo(programId: string, formData: FormData) {
-  const code = str(formData, 'code');
   const description = str(formData, 'description');
+  if (!description) return;
 
+  // The API appends the PLO and generates its code (PLO01, PLO02, ...).
   const plo = await apiFetch<{ id: string }>('/plos', {
     method: 'POST',
-    body: JSON.stringify({
-      programId,
-      code,
-      description,
-      displayOrder: optInt(formData, 'displayOrder'),
-    }),
+    body: JSON.stringify({ programId, description }),
   });
 
   const piLines = str(formData, 'performanceIndicators')
@@ -345,19 +341,13 @@ export async function createPlo(programId: string, formData: FormData) {
     .map((line) => line.trim())
     .filter(Boolean);
 
-  await Promise.all(
-    piLines.map((description, i) =>
-      apiFetch('/performance-indicators', {
-        method: 'POST',
-        body: JSON.stringify({
-          ploId: plo.id,
-          code: `PI${i + 1}`,
-          description,
-          displayOrder: i + 1,
-        }),
-      }),
-    ),
-  );
+  // One at a time so they keep the order they were typed in.
+  for (const piDescription of piLines) {
+    await apiFetch('/performance-indicators', {
+      method: 'POST',
+      body: JSON.stringify({ ploId: plo.id, description: piDescription }),
+    });
+  }
 
   revalidatePath(`/admin/programs/${programId}`, 'layout');
   revalidatePath(`/programs/${programId}`);
@@ -369,20 +359,40 @@ export async function deletePlo(programId: string, ploId: string) {
   revalidatePath(`/programs/${programId}`);
 }
 
+// Only the description is edited; the code follows the list position.
 export async function updatePlo(programId: string, ploId: string, formData: FormData) {
-  const code = str(formData, 'code');
   const description = str(formData, 'description');
-  if (!code || !description) return;
+  if (!description) return;
 
   await apiFetch(`/plos/${ploId}`, {
     method: 'PATCH',
-    body: JSON.stringify({
-      code,
-      description,
-      displayOrder: optInt(formData, 'displayOrder'),
-    }),
+    body: JSON.stringify({ description }),
   });
 
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
+  revalidatePath(`/programs/${programId}`);
+}
+
+// ids: every PLO of the program in the new order; the API renumbers them.
+export async function reorderPlos(programId: string, ids: string[]) {
+  await apiFetch('/plos/reorder', {
+    method: 'POST',
+    body: JSON.stringify({ programId, ids }),
+  });
+  revalidatePath(`/admin/programs/${programId}`, 'layout');
+  revalidatePath(`/programs/${programId}`);
+}
+
+// ids: every performance indicator of the PLO in the new order.
+export async function reorderPerformanceIndicators(
+  programId: string,
+  ploId: string,
+  ids: string[],
+) {
+  await apiFetch('/performance-indicators/reorder', {
+    method: 'POST',
+    body: JSON.stringify({ ploId, ids }),
+  });
   revalidatePath(`/admin/programs/${programId}`, 'layout');
   revalidatePath(`/programs/${programId}`);
 }
@@ -395,22 +405,13 @@ export async function createPerformanceIndicator(
   const description = str(formData, 'description');
   if (!description) return;
 
-  const existing = await apiFetch<{ code: string }[]>(`/performance-indicators?ploId=${ploId}`);
-  const nextNumber =
-    1 +
-    existing.reduce((max, pi) => {
-      const n = Number(pi.code.match(/^PI(\d+)$/)?.[1]);
-      return Number.isFinite(n) ? Math.max(max, n) : max;
-    }, 0);
-
+  // The API appends it and generates the code (PI1, PI2, ...).
   await apiFetch('/performance-indicators', {
     method: 'POST',
     body: JSON.stringify({
       ploId,
-      code: `PI${nextNumber}`,
       description,
       assessment: str(formData, 'assessment') || undefined,
-      displayOrder: nextNumber,
     }),
   });
 

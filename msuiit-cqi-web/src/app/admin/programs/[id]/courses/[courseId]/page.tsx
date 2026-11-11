@@ -103,6 +103,14 @@ export default async function AdminCourseClosPage({
         <h1 className="text-2xl font-semibold">
           {course.code} — {course.title}
         </h1>
+        <a
+          href={`/programs/${program.id}/courses/${course.id}`}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-1 inline-block text-sm text-blue-600 hover:underline dark:text-blue-400"
+        >
+          View public page &#8599;
+        </a>
       </div>
 
       <CourseAdminTabs programId={program.id} courseId={course.id} />

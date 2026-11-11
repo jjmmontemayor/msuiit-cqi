@@ -8,7 +8,7 @@ import {
 import {
   createPlo,
 } from '../../../../actions';
-import { PloRow } from './plo-row';
+import { PloList } from './plo-list';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,28 +42,23 @@ export default async function ProgramLearningOutcomesPage({
         {plos.length === 0 ? (
           <p className="mt-2 text-sm text-neutral-500">No PLOs yet.</p>
         ) : (
-          <ul className="mt-3 divide-y divide-neutral-200 rounded-md border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
-            {plos.map((plo) => (
-              <PloRow key={plo.id} programId={program.id} plo={plo} />
-            ))}
-          </ul>
+          <PloList
+            // Reset the local order whenever the saved data changes.
+            key={JSON.stringify(plos)}
+            programId={program.id}
+            plos={plos}
+          />
         )}
 
         <form
           action={boundCreatePlo}
           className="mt-3 grid gap-3 rounded-md border border-neutral-200 p-4 sm:grid-cols-4 dark:border-neutral-800"
         >
-          <label className="text-sm">
-            Code
-            <input
-              name="code"
-              required
-              maxLength={20}
-              placeholder="PLO1"
-              className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-            />
-          </label>
-          <label className="text-sm sm:col-span-2">
+          <p className="text-xs text-neutral-500 sm:col-span-4">
+            The code is assigned automatically (PLO{String(plos.length + 1).padStart(2, '0')}) and follows the
+            order of the list &mdash; drag outcomes to rearrange them.
+          </p>
+          <label className="text-sm sm:col-span-4">
             Description
             <input
               name="description"
@@ -71,16 +66,8 @@ export default async function ProgramLearningOutcomesPage({
               className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
             />
           </label>
-          <label className="text-sm">
-            Display order
-            <input
-              name="displayOrder"
-              type="number"
-              className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-            />
-          </label>
           <label className="text-sm sm:col-span-4">
-            Performance Indicators (optional — one per line, numbered PI1, PI2, &hellip; in order)
+            Performance Indicators (optional — one per line, numbered PI1, PI2, &hellip; in order; drag to rearrange later)
             <textarea
               name="performanceIndicators"
               rows={3}

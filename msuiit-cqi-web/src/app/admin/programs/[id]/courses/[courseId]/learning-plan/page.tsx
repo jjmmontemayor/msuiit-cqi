@@ -95,6 +95,14 @@ export default async function AdminCourseSyllabiPage({
         <h1 className="text-2xl font-semibold">
           {course.code} — {course.title}
         </h1>
+        <a
+          href={`/programs/${program.id}/courses/${course.id}`}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-1 inline-block text-sm text-blue-600 hover:underline dark:text-blue-400"
+        >
+          View public page &#8599;
+        </a>
       </div>
       <CourseAdminTabs programId={program.id} courseId={course.id} />
     </>
@@ -222,21 +230,19 @@ export default async function AdminCourseSyllabiPage({
                   <th className="px-3 py-2 text-left">Section</th>
                   <th className="px-3 py-2 text-left">Instructor</th>
                   <th className="px-3 py-2 text-right">Weeks</th>
-                  <th className="px-3 py-2 text-left">Status</th>
                   <th className="px-3 py-2" />
                 </tr>
               </thead>
               <tbody>
                 {allOfferings.map((o) => {
-                  const status = o.archivedAt
-                    ? "Archived"
-                    : o.id === currentId
-                      ? "Current"
-                      : "Previous";
+                  // The current syllabus gets a subtle background; archived ones are muted.
+                  const isCurrent = !o.archivedAt && o.id === currentId;
                   return (
                     <tr
                       key={o.id}
-                      className="border-t border-neutral-200 align-middle dark:border-neutral-800"
+                      className={`border-t border-neutral-200 align-middle dark:border-neutral-800 ${
+                        isCurrent ? "bg-emerald-50/70 dark:bg-emerald-950/20" : ""
+                      } ${o.archivedAt ? "text-neutral-500" : ""}`}
                     >
                       <td className="whitespace-nowrap px-3 py-2 font-medium">
                         {o.academicTerm.label}
@@ -245,17 +251,6 @@ export default async function AdminCourseSyllabiPage({
                       <td className="px-3 py-2">{o.instructorName ?? "—"}</td>
                       <td className="px-3 py-2 text-right">
                         {entryCounts[o.id] ?? 0}
-                      </td>
-                      <td className="px-3 py-2">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                            status === "Current"
-                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
-                              : "bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
-                          }`}
-                        >
-                          {status}
-                        </span>
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex items-center justify-end gap-2">

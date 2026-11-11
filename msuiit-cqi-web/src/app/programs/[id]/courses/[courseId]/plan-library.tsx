@@ -1,11 +1,11 @@
 import Link from "next/link";
 import {
   CopyIcon,
-  EyeIcon,
   iconLinkClass,
   PencilIcon,
 } from "@/components/icon-buttons";
 import type { AcademicTerm, CourseOffering } from "@/lib/api";
+import { RowLink } from "./row-link";
 import {
   addSyllabus,
   saveSyllabusCopy,
@@ -142,7 +142,6 @@ export function PlanLibrary({
               <th className="px-3 py-2 text-left">Section</th>
               <th className="px-3 py-2 text-left">Instructor</th>
               <th className="px-3 py-2 text-right">Weeks</th>
-              <th className="px-3 py-2 text-left">Status</th>
               <th className="px-3 py-2" />
             </tr>
           </thead>
@@ -189,11 +188,6 @@ export function PlanLibrary({
                   {entryCounts[copySource.id] ?? 0}
                 </td>
                 <td className="px-3 py-2">
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-                    New copy
-                  </span>
-                </td>
-                <td className="px-3 py-2">
                   <form
                     id="copy-draft"
                     action={saveSyllabusCopy.bind(
@@ -215,15 +209,15 @@ export function PlanLibrary({
               </tr>
             )}
             {offerings.map((o) => {
-              const status = o.archivedAt
-                ? "Archived"
-                : o.id === currentId
-                  ? "Current"
-                  : "Previous";
+              // The current syllabus gets a subtle background; archived ones are muted.
+              const isCurrent = !o.archivedAt && o.id === currentId;
               return (
-                <tr
+                <RowLink
                   key={o.id}
-                  className="border-t border-neutral-200 align-top dark:border-neutral-800"
+                  href={`${listUrl}?offeringId=${o.id}`}
+                  className={`border-t border-neutral-200 align-top dark:border-neutral-800 ${
+                    isCurrent ? "bg-emerald-50/70 dark:bg-emerald-950/20" : ""
+                  } ${o.archivedAt ? "text-neutral-500" : ""}`}
                 >
                   <td className="whitespace-nowrap px-3 py-2 font-medium">
                     {o.academicTerm.label}
@@ -234,26 +228,7 @@ export function PlanLibrary({
                     {entryCounts[o.id] ?? 0}
                   </td>
                   <td className="px-3 py-2">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                        status === "Current"
-                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
-                          : "bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
-                      }`}
-                    >
-                      {status}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2">
                     <div className="flex items-center justify-end gap-1">
-                      <Link
-                        href={`${listUrl}?offeringId=${o.id}`}
-                        title="View"
-                        aria-label="View syllabus"
-                        className={iconLinkClass}
-                      >
-                        <EyeIcon />
-                      </Link>
                       <Link
                         href={`${listUrl}?copy=${o.id}`}
                         title="Copy as a new syllabus"
@@ -272,7 +247,7 @@ export function PlanLibrary({
                       </Link>
                     </div>
                   </td>
-                </tr>
+                </RowLink>
               );
             })}
           </tbody>

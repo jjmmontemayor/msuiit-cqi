@@ -1,30 +1,62 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import {
   createPerformanceIndicator,
   deletePerformanceIndicator,
   deletePlo,
+  reorderPerformanceIndicators,
   updatePerformanceIndicator,
   updatePlo,
 } from '../../../../actions';
 import type { Plo } from '@/lib/api';
 import { DeleteButton, EditButton } from '@/components/icon-buttons';
 
+const PI_DRAG = 'application/x-pi';
+
+type DragProps = Pick<
+  React.HTMLAttributes<HTMLLIElement>,
+  'onDragStart' | 'onDragOver' | 'onDrop' | 'onDragEnd'
+>;
+
+const HANDLE = (
+  <span
+    aria-hidden="true"
+    title="Drag to reorder"
+    className="shrink-0 cursor-grab select-none text-neutral-400 active:cursor-grabbing"
+  >
+    &#8942;&#8942;
+  </span>
+);
+
 export function PloRow({
   programId,
   plo,
+  code,
+  dragProps,
+  isDragging,
 }: {
   programId: string;
   plo: Plo;
+  // Generated from the list position (PLO01, ...), shown instead of plo.code
+  // so it updates immediately while dragging.
+  code: string;
+  dragProps: DragProps;
+  isDragging: boolean;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditingPlo, setIsEditingPlo] = useState(false);
   const pis = plo.performanceIndicators ?? [];
 
   return (
-    <li className="px-4 py-2.5">
+    <li
+      // Not draggable while its form is open, so text can be selected.
+      draggable={!isEditingPlo}
+      {...dragProps}
+      className={`px-4 py-2.5 ${isDragging ? 'opacity-40' : ''}`}
+    >
       <div className="flex items-center justify-between gap-3">
+        {HANDLE}
         <button
           type="button"
           onClick={() => setIsExpanded(!isExpanded)}
@@ -37,7 +69,7 @@ export function PloRow({
             &#9656;
           </span>
           <span>
-            <span className="font-medium">{plo.code}</span>
+            <span className="font-medium">{code}</span>
             <span className="ml-2 text-neutral-600 dark:text-neutral-400">
               {plo.description}
             </span>
@@ -66,20 +98,10 @@ export function PloRow({
                 await updatePlo(programId, plo.id, formData);
                 setIsEditingPlo(false);
               }}
-              className="grid gap-2 rounded-md border border-neutral-200 p-3 sm:grid-cols-4 dark:border-neutral-800"
+              className="grid gap-2 rounded-md border border-neutral-200 p-3 dark:border-neutral-800"
             >
-              <label className="text-xs sm:col-span-1">
-                Code
-                <input
-                  name="code"
-                  required
-                  maxLength={20}
-                  defaultValue={plo.code}
-                  className="mt-0.5 w-full rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-                />
-              </label>
-              <label className="text-xs sm:col-span-2">
-                Description
+              <label className="text-xs">
+                Description ({code} &middot; code follows the list order)
                 <input
                   name="description"
                   required
@@ -87,16 +109,7 @@ export function PloRow({
                   className="mt-0.5 w-full rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
                 />
               </label>
-              <label className="text-xs">
-                Display order
-                <input
-                  name="displayOrder"
-                  type="number"
-                  defaultValue={plo.displayOrder}
-                  className="mt-0.5 w-full rounded border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-                />
-              </label>
-              <div className="sm:col-span-4">
+              <div>
                 <button
                   type="submit"
                   className="rounded-md bg-neutral-900 px-3 py-1 text-xs font-medium text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"
@@ -110,11 +123,13 @@ export function PloRow({
           {pis.length === 0 ? (
             <p className="text-xs text-neutral-500">No Performance Indicators yet.</p>
           ) : (
-            <ul className="divide-y divide-neutral-200 rounded-md border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
-              {pis.map((pi) => (
-                <PiRow key={pi.id} programId={programId} piId={pi.id} pi={pi} />
-              ))}
-            </ul>
+            <PiList
+              // Reset the local order whenever the saved data changes.
+              key={JSON.stringify(pis)}
+              programId={programId}
+              ploId={plo.id}
+              pis={pis}
+            />
           )}
 
           <form
@@ -153,14 +168,99 @@ export function PloRow({
   );
 }
 
+type Pi = NonNullable<Plo['performanceIndicators']>[number];
+
+// A PLO's performance indicators: drag to reorder; PI1, PI2, ... follow the
+// position and are renumbered on the server when the order is saved.
+function PiList({
+  programId,
+  ploId,
+  pis,
+}: {
+  programId: string;
+  ploId: string;
+  pis: Pi[];
+}) {
+  const [rows, setRows] = useState(pis);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  function handleDrop(targetIndex: number) {
+    if (dragIndex === null || dragIndex === targetIndex) {
+      setDragIndex(null);
+      return;
+    }
+    const next = [...rows];
+    const [moved] = next.splice(dragIndex, 1);
+    next.splice(targetIndex, 0, moved);
+    setRows(next);
+    setDragIndex(null);
+    startTransition(async () => {
+      await reorderPerformanceIndicators(
+        programId,
+        ploId,
+        next.map((p) => p.id),
+      );
+    });
+  }
+
+  return (
+    <ul
+      className={`divide-y divide-neutral-200 rounded-md border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800 ${
+        isPending ? 'opacity-60' : ''
+      }`}
+    >
+      {rows.map((pi, i) => (
+        <PiRow
+          key={pi.id}
+          programId={programId}
+          piId={pi.id}
+          pi={pi}
+          code={`PI${i + 1}`}
+          isDragging={dragIndex === i}
+          dragProps={{
+            onDragStart: (e) => {
+              // Keep the parent PLO row from treating this as its own drag.
+              e.stopPropagation();
+              e.dataTransfer.setData(PI_DRAG, pi.id);
+              e.dataTransfer.effectAllowed = 'move';
+              setDragIndex(i);
+            },
+            onDragOver: (e) => {
+              if (dragIndex !== null && e.dataTransfer.types.includes(PI_DRAG)) {
+                e.preventDefault();
+                e.stopPropagation();
+              }
+            },
+            onDrop: (e) => {
+              // dragIndex is only set in the list the drag started from.
+              if (dragIndex === null) return;
+              e.preventDefault();
+              e.stopPropagation();
+              handleDrop(i);
+            },
+            onDragEnd: () => setDragIndex(null),
+          }}
+        />
+      ))}
+    </ul>
+  );
+}
+
 function PiRow({
   programId,
   piId,
   pi,
+  code,
+  dragProps,
+  isDragging,
 }: {
   programId: string;
   piId: string;
-  pi: NonNullable<Plo['performanceIndicators']>[number];
+  pi: Pi;
+  code: string;
+  dragProps: DragProps;
+  isDragging: boolean;
 }) {
   const [isEditing, setIsEditing] = useState(false);
 
@@ -174,7 +274,7 @@ function PiRow({
           }}
           className="grid gap-2 sm:grid-cols-4"
         >
-          <div className="text-xs font-medium sm:col-span-4">{pi.code}</div>
+          <div className="text-xs font-medium sm:col-span-4">{code}</div>
           <label className="text-xs text-neutral-500 sm:col-span-2">
             Description
             <input
@@ -214,9 +314,16 @@ function PiRow({
   }
 
   return (
-    <li className="flex items-center justify-between gap-3 px-3 py-1.5 text-sm">
-      <div>
-        <span className="font-medium">{pi.code}</span>
+    <li
+      draggable
+      {...dragProps}
+      className={`flex items-center justify-between gap-3 px-3 py-1.5 text-sm ${
+        isDragging ? 'opacity-40' : ''
+      }`}
+    >
+      {HANDLE}
+      <div className="min-w-0 flex-1">
+        <span className="font-medium">{code}</span>
         <span className="ml-2 text-neutral-600 dark:text-neutral-400">{pi.description}</span>
         {pi.assessment && (
           <span className="ml-2 text-xs text-neutral-400">— Assessed via: {pi.assessment}</span>

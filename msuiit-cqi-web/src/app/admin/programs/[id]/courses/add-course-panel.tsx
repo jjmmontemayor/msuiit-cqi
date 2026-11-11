@@ -1,4 +1,5 @@
 import type { Course } from "@/lib/api";
+import { CourseCombobox } from "./course-combobox";
 
 const input =
   "mt-1 w-full rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900";
@@ -120,16 +121,14 @@ export function AddCoursePanel({
           <h3 className="text-sm font-medium">Add existing course</h3>
           <label className="text-sm">
             Course
-            <select name="courseId" required defaultValue="" className={input}>
-              <option value="" disabled>
-                Select a course&hellip;
-              </option>
-              {availableCourses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.code} — {c.title}
-                </option>
-              ))}
-            </select>
+            <CourseCombobox
+              courses={availableCourses.map((c) => ({
+                id: c.id,
+                code: c.code,
+                title: c.title,
+              }))}
+              className={input}
+            />
           </label>
           <PlacementFields />
           <button
