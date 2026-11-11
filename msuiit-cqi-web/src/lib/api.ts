@@ -15,6 +15,9 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   // would make the request unparsable on the server.
   const isFormData = init?.body instanceof FormData;
   const res = await fetch(`${API_URL}${path}`, {
+    // Always live data; a cached empty list (e.g. curriculum versions) would
+    // otherwise show stale "nothing set up" messages until a fresh request.
+    cache: 'no-store',
     ...init,
     headers: isFormData
       ? init?.headers

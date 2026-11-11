@@ -144,7 +144,8 @@ async function main() {
       code: '2022-2025',
       startYear: 2022,
       endYear: 2025,
-      description: 'Batch 2022 to 2025',
+      description:
+        'Imported from the source workbook (batch 2022-2025; the workbook did not split by term)',
     },
   });
 
@@ -164,7 +165,7 @@ async function main() {
       schoolYearStart: 2024,
       schoolYearEnd: 2025,
       semester: 'FIRST',
-      label: 'Imported batch 2022-2025 (source workbook did not split by term)',
+      label: '2022-2025',
     },
   });
 
