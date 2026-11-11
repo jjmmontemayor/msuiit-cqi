@@ -65,6 +65,19 @@ const PAGE_AND_HEADER = `#set page(
 `;
 
 const cell = (s: string) => `[${s}]`;
+
+// A cell holding one entry per line (outcomes, activities, resources,
+// assessments): several entries become a bulleted list, a single one stays
+// plain text.
+function bulletCell(text: string | null | undefined): string {
+  const items = (text ?? '')
+    .split(/\r?\n/)
+    .map((l) => l.replace(/^\s*[-•*]\s+/, '').trim())
+    .filter(Boolean);
+  if (items.length <= 1) return cell(esc(items[0]));
+  const list = items.map((i) => `[${esc(i)}]`).join(', ');
+  return `[#list(tight: true, indent: 0pt, body-indent: 0.4em, ${list})]`;
+}
 const center = (s: string) => `[#align(center + horizon)[${s}]]`;
 const pct = (n: number) => `${n}%`;
 
@@ -208,11 +221,11 @@ ${d.clos.map((c) => `    table.cell(align: center+horizon)[*${esc(c.code)}*]`).j
       return [
         cell(esc(e.weekLabel)),
         cell(esc(e.topics)),
-        cell(esc(e.lessonOutcome)),
+        bulletCell(e.lessonOutcome),
         ...ticks,
-        cell(esc(e.methodology)),
-        cell(esc(e.learningResources)),
-        cell(esc(e.assessment)),
+        bulletCell(e.methodology),
+        bulletCell(e.learningResources),
+        bulletCell(e.assessment),
       ].join(', ');
     })
     .join(',\n  ');
